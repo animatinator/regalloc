@@ -1,5 +1,8 @@
 open HolKernel Parse boolLib bossLib;
 
+open arithmeticTheory listTheory combinTheory pairTheory
+     finite_mapTheory relationTheory optionTheory pred_setTheory;
+
 val _ = new_theory "three_addr";
 
 (* type of instruction *)
