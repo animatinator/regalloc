@@ -46,7 +46,7 @@ val add_vertex_def = Define `
 `
 
 val add_edge_def = Define `
-    (add_edge (R a) (R b) (CG (VLIST vlist) (ELIST elist)) = 
+    (add_edge (R a) (R b) (CG (VLIST vlist) (ELIST elist)) =
     	      (CG
 	      	  (VLIST vlist)
 		  (ELIST ((E (R a) (R b)) INSERT
@@ -78,7 +78,7 @@ Induct_on `graph` THENL [  (* Realised recently that these don't have to be THEN
 				where there is only one subgoal, so this could be
 				made neater *)
 RW_TAC bool_ss [] THENL [
-Induct_on `V` THENL [
+Induct_on `V` THENL [ (* should use Cases_on in these places *)
 Induct_on `E'` THENL [
 RW_TAC bool_ss [] THEN
 RW_TAC bool_ss [add_edge_def] THEN
@@ -90,3 +90,12 @@ RW_TAC bool_ss [] THEN
 RW_TAC bool_ss [add_edge_def] THEN
 RW_TAC bool_ss [contains_edge_def] THEN
 EVAL_TAC]]]])
+
+(* Magnus version *)
+val add_edge_works = prove(
+  ``contains_edge (E (R a) (R b)) (add_edge (R a) (R b) graph) /\
+    contains_edge (E (R b) (R a)) (add_edge (R a) (R b) graph)``,
+  Cases_on `graph` THEN
+  Cases_on `V` THEN
+  Cases_on `E'` THEN
+  EVAL_TAC);
