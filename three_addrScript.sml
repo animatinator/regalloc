@@ -25,6 +25,14 @@ val insert_def = Define `
 val delete_def = Define `
   delete x xs = FILTER (\y. x <> y) xs`;
 
+(* proofs about helper functions *)
+val insert_mapping = prove(
+  ``(MAP s (insert x list) = MAP t (insert x list)) ==>
+  (MAP s list = MAP t list)``,
+  RW_TAC bool_ss [insert_def, MAP])
+
+
+
 (* annotate code with live ranges *)
 
 val get_live_def = Define `
@@ -42,89 +50,58 @@ val MEM_insert = prove(
   ``MEM x (insert y ys) = MEM x (y::ys)``,
   SRW_TAC [] [insert_def] THEN METIS_TAC []);
 
-``
-!code s t live f .
-      (MAP s (get_live code live) = MAP t (get_live code live)) ==>
-      (MAP (eval f s code) live = MAP (eval f t code) live)
-``
+val MEM_inserted_item = prove(``MEM x (insert x xs)``, SIMP_TAC std_ss [MEM_insert, MEM]);
 
-(* Magnus: I packaged up the base-case proof into a THEN1. THEN1 is
-   very useful and much better than THENL (I guess I should update the
-   little guide that I wrote http://www.cl.cam.ac.uk/~mom22/HOL-interaction.pdf). *)
-
-Induct_on `code`
-THEN1 (* base case *) (EVAL_TAC THEN SIMP_TAC std_ss [])
-
-(* Magnus: You don't want to Induct_on `live`, because the definitions
-   don't recurse on this argument. How about doing Cases_on `h` to
-   expand h and then rewrite with the definition of eval and get_live
-   as follows? *)
-
-Cases_on `h`
-THEN FULL_SIMP_TAC std_ss [eval_def,get_live_def]
-
-(* Magnus: I suggest you continue by using some combination of tactics like:
-
-              FULL_SIMP_TAC std_ss []
-              REPEAT STRIP_TAC
-              Q.PAT_ASSUM `!s t. bbb` MATCH_MP_TAC
-              Cases_on `n = e`
-
-           and theorems like
-
-              MAP_EQ_f, APPLY_UPDATE_THM, MEM_insert, MEM
-
-           and look for other theorems using
-
-              print_match [] ``MEM y (FILTER P ys) = anything``
-
-*)
-
-(*
-
-(* inductive case *)
-Induct_on `live`  (* not sure if this is the right approach - seems useful
-	  	  in that it makes it possible to unfold the MAP definition
-		  but I get stuck trying to prove the inductive case
-	  (* base case *)
-	  RW_TAC bool_ss [MAP]
-	  (* inductive case *)
-	  RW_TAC bool_ss [MAP]
-	  	 EVAL_TAC
-		 Induct_on `h'`
-		 RW_TAC bool_ss [MAP]
-		 (* not sure how to make use of the original inductive
-		 hypothesis here - have tried showing that
-		 (MAP s (get_live code live) = MAP t (get_live code live))
-		 and then deriving
-		 (MAP (eval f s code) live = MAP (eval f t code) live)
-		 which should be useful in proving the goal, but keep getting
-		 mismatches between quantified and unquantified variables
-		 *)
-
-*)
-
-(*
-val it =
-
-    eval f s (Inst n n0 n1::code) h = eval f t (Inst n n0 n1::code) h
-    ------------------------------------
-      0.  !s t live f.
-            (MAP s (get_live code live) = MAP t (get_live code live)) ==>
-            (MAP (eval f s code) live = MAP (eval f t code) live)
-      1.  !h s t f.
-            (MAP s (get_live (h::code) live) =
-             MAP t (get_live (h::code) live)) ==>
-            (MAP (eval f s (h::code)) live = MAP (eval f t (h::code)) live)
-      2.  MAP s (get_live (Inst n n0 n1::code) (h::live)) =
-          MAP t (get_live (Inst n n0 n1::code) (h::live))
-*)
+val MEM_after_insertion = prove(``MEM x xs ==> MEM x (insert y xs)``, SRW_TAC [] [insert_def]);
 
 
 val eval_get_live = prove(
   ``!code s t live f.
       (MAP s (get_live code live) = MAP t (get_live code live)) ==>
       (MAP (eval f s code) live = MAP (eval f t code) live)``,
-  cheat (* David, can you try to prove this? i.e. remove the cheat *) );
+Induct_on `code`
+(* base case *)
+THEN1 (EVAL_TAC THEN SIMP_TAC std_ss [])
+
+(* inductive case *)
+THEN1 (
+  Cases_on `h` THEN  (* expand h *)
+  FULL_SIMP_TAC std_ss [get_live_def, insert_mapping, eval_def] THEN
+  REPEAT STRIP_TAC THEN
+  
+  (* The following implies the goal using the inductive hypothesis *)
+  ` MAP ((n =+ f (s n0) (s n1)) s) (get_live code live)
+    = MAP ((n =+ f (t n0) (t n1)) t) (get_live code live)` by ALL_TAC
+  THENL [
+    `MAP s (delete n (get_live code live))
+      = MAP t (delete n (get_live code live))`
+    by METIS_TAC [insert_mapping] THEN
+    FULL_SIMP_TAC std_ss [delete_def, MAP_EQ_f, MEM, MEM_FILTER] THEN
+    REPEAT STRIP_TAC THEN
+    EVAL_TAC THEN
+    Cases_on `n = e` THENL [
+      ASM_SIMP_TAC bool_ss [COND_CLAUSES] THEN
+      `MEM n0 (insert n0 (insert n1
+        (FILTER (\y . ~(n = y)) (get_live code live))))
+        /\ MEM n1 (insert n0 (insert n1
+      	(FILTER (\y . ~(n = y)) (get_live code live))))`
+      by ALL_TAC
+
+      THENL [
+        `!xs . MEM n0 (insert n0 xs)` by METIS_TAC [MEM_inserted_item] THEN
+        FULL_SIMP_TAC bool_ss [] THEN
+        `!xs . MEM n1 (insert n1 xs)`
+          by METIS_TAC [MEM_inserted_item, MEM_after_insertion] THEN
+        METIS_TAC [MEM_after_insertion],
+        METIS_TAC []
+      ],
+      
+    ASM_SIMP_TAC bool_ss [COND_CLAUSES]
+    ],
+      
+  METIS_TAC []
+  ]
+)
+);
 
 val _ = export_theory();
