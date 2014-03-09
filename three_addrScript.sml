@@ -135,26 +135,6 @@ val no_dead_code_def = Define `
 `
 
 
-val duplicate_free_map = prove(
-``
-duplicate_free (MAP c list) ==> duplicate_free (list)
-``,
-REPEAT STRIP_TAC THEN
-Induct_on `list` THEN1 (
-EVAL_TAC)
-THEN1 (
-STRIP_TAC THEN
-STRIP_TAC THEN
-FULL_SIMP_TAC bool_ss [MAP] THEN
-`duplicate_free (MAP c list)` by (FULL_SIMP_TAC bool_ss [duplicate_free_def]) THEN
-`duplicate_free list` by METIS_TAC [] THEN
-FULL_SIMP_TAC bool_ss [duplicate_free_def] THEN
-Cases_on `MEM h list` THEN1 (
-FULL_SIMP_TAC bool_ss [MEM] THEN
-cheat) (* todo - is sort-of trivial but hard *)
-THEN1 (METIS_TAC [])))
-
-
 (* Lemma for the below, need to do something for deletion too *)
 val duplicate_free_map_insertion = prove(``
     duplicate_free (MAP c (insert n x)) ==>
