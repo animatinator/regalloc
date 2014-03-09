@@ -10,11 +10,6 @@ val _ = new_theory "three_addr";
 val _ = Hol_datatype `
   inst = Inst of num => num => num `
 
-(* type of colouring *)
-
-val _ = Hol_datatype `
-  colouring = Col of num => num`
-
 (* semantics of instruction evaluation *)
 
 val eval_def = Define `
@@ -80,7 +75,7 @@ THEN1 (
   Cases_on `h` THEN  (* expand h *)
   FULL_SIMP_TAC std_ss [get_live_def, insert_mapping, eval_def] THEN
   REPEAT STRIP_TAC THEN
-  
+
   (* The following implies the goal using the inductive hypothesis *)
   ` MAP ((n =+ f (s n0) (s n1)) s) (get_live code live)
     = MAP ((n =+ f (t n0) (t n1)) t) (get_live code live)` by ALL_TAC
@@ -107,10 +102,10 @@ THEN1 (
         METIS_TAC [MEM_after_insertion],
         METIS_TAC []
       ],
-      
+
     ASM_SIMP_TAC bool_ss [COND_CLAUSES]
     ],
-      
+
   METIS_TAC []
   ]
 )
@@ -123,6 +118,11 @@ val duplicate_free_def = Define `
     (duplicate_free (x::xs) = ~(MEM x xs) /\ duplicate_free xs)
 `
 
+
+(* Magnus: the definition of colouring_ok isn't right. You'll need to
+   assert that every live set has the duplicate_free property,
+   i.e. between every instruction. Hint: make colouring_ok look
+   similar to the definition of no_dead_code. *)
 val colouring_ok_def = Define `
     (colouring_ok c code live = duplicate_free (MAP c (get_live code live)))
 `
@@ -146,17 +146,18 @@ THEN1 (FULL_SIMP_TAC bool_ss []
       THEN FULL_SIMP_TAC bool_ss [MAP, duplicate_free_def]))
 
 (* need this to obtain `colouring_ok c code live` for the proof later *)
-``
-no_dead_code (Inst n n0 n1 :: code) live /\
-colouring_ok c (Inst n n0 n1 :: code) live ==>
-colouring_ok c code live
-``
+val colouring_ok_preserved = prove(``
+  no_dead_code (Inst n n0 n1 :: code) live /\
+  colouring_ok c (Inst n n0 n1 :: code) live ==>
+  colouring_ok c code live``,
 SIMP_TAC bool_ss [colouring_ok_def]
-SIMP_TAC bool_ss [get_live_def]
-STRIP_TAC
-`duplicate_free (MAP c (delete n (get_live code live)))`
-by METIS_TAC [duplicate_free_map_insertion]
-FULL_SIMP_TAC bool_ss [delete_def]
+THEN SIMP_TAC bool_ss [get_live_def]
+THEN STRIP_TAC
+THEN `duplicate_free (MAP c (delete n (get_live code live)))`
+      by METIS_TAC [duplicate_free_map_insertion]
+THEN FULL_SIMP_TAC bool_ss [delete_def]
+THEN cheat)
+
 (* TODO looks true but need to remove the `delete n`... *)
 
 
@@ -167,20 +168,36 @@ val no_dead_code_preserved = prove(``
     no_dead_code code live``,
     RW_TAC std_ss [no_dead_code_def])
 
+(* colouring_ok is preserved by removing the first instruction *)
+val colouring_ok_preserved = prove(``
+    colouring_ok c (Inst n n0 n1 :: code) live ==>
+    colouring_ok c code live``,
+  cheat); (* TODO: remove cheat! *)
 
-``
- !code s t c live f.
-    colouring_ok c code live /\ no_dead_code code live /\
-    (MAP s (get_live code live) = MAP (t o c) (get_live code live)) ==>
-    (MAP (eval f s code) live = MAP (eval f t (apply c code) o c) live)
-``
-Induct_on `code`
-EVAL_TAC THEN DECIDE_TAC
+val colouring_ok_IMP_eval_apply = prove(``
+   !code s t c live f.
+      colouring_ok c code live /\ no_dead_code code live /\
+      (MAP s (get_live code live) = MAP (t o c) (get_live code live)) ==>
+      (MAP (eval f s code) live = MAP (eval f t (apply c code) o c) live)``,
+  Induct_on `code` THEN1 (EVAL_TAC THEN DECIDE_TAC)
+  THEN FULL_SIMP_TAC std_ss []
+  THEN REPEAT STRIP_TAC
+  THEN Cases_on `h`
+  THEN SIMP_TAC std_ss [apply_def,eval_def]
+  THEN IMP_RES_TAC no_dead_code_preserved
+  THEN IMP_RES_TAC colouring_ok_preserved
+  THEN FIRST_X_ASSUM MATCH_MP_TAC
+  THEN FULL_SIMP_TAC std_ss [MAP_EQ_f,APPLY_UPDATE_THM]
+  THEN FULL_SIMP_TAC std_ss [get_live_def,MEM_insert,MEM,delete_def,MEM_FILTER]
+  THEN REPEAT STRIP_TAC
+  THEN REVERSE (`(c n = c e) = (n = e)` by ALL_TAC)
+  THEN1 FULL_SIMP_TAC std_ss []
+  THEN Cases_on `n = e` THEN FULL_SIMP_TAC std_ss []
+  THEN FULL_SIMP_TAC std_ss [no_dead_code_def]
+  THEN cheat) (* TODO: remove cheat! *)
 
-FULL_SIMP_TAC std_ss []
-REPEAT STRIP_TAC
-Cases_on `h`
-EVAL_TAC
+(*
+
 (* plan: use the inductive lemma with appropriate substitutions for s and t.
 This will require transforming the conditions colouring_ok, no_dead_code etc.
 which work on (Inst n n0 n1 :: code) into ones working on code alone. *)
@@ -199,9 +216,7 @@ be valid maybe *)
 ! t c live f.
 MAP (eval f (t o c) code) live = MAP (eval f t (apply c code) o c) live
 ``
-Induct_on `code`
-EVAL_TAC
-DECIDE_TAC
+Induct_on `code` THEN1 (EVAL_TAC THEN SIMP_TAC std_ss [])
 Cases_on `h`
 RW_TAC bool_ss [apply_def]
 RW_TAC bool_ss [eval_def]
@@ -220,5 +235,9 @@ RW_TAC bool_ss [o_DEF]
 RW_TAC bool_ss [UPDATE_def]
 (* Have to prove the functions are equal - can this be broken down into showing
 they're equal for an arbitrary argument? *)
+RW_TAC bool_ss [FUN_EQ_THM]
+(* Magnus: I don't think this is right *)
+
+*)
 
 val _ = export_theory();
