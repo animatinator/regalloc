@@ -118,13 +118,11 @@ val duplicate_free_def = Define `
     (duplicate_free (x::xs) = ~(MEM x xs) /\ duplicate_free xs)
 `
 
-
-(* Magnus: the definition of colouring_ok isn't right. You'll need to
-   assert that every live set has the duplicate_free property,
-   i.e. between every instruction. Hint: make colouring_ok look
-   similar to the definition of no_dead_code. *)
 val colouring_ok_def = Define `
-    (colouring_ok c code live = duplicate_free (MAP c (get_live code live)))
+    (colouring_ok _ [] _ = T) /\
+    (colouring_ok c ((Inst w r1 r2)::code) live =
+    		  duplicate_free (MAP c (get_live ((Inst w r1 r2)::code) live))
+    		  /\ colouring_ok c code live)
 `
 
 
@@ -133,33 +131,6 @@ val no_dead_code_def = Define `
     (no_dead_code ((Inst w r1 r2)::code) live = MEM w (get_live code live)
     		  /\ no_dead_code code live)
 `
-
-
-(* Lemma for the below, need to do something for deletion too *)
-val duplicate_free_map_insertion = prove(``
-    duplicate_free (MAP c (insert n x)) ==>
-    duplicate_free (MAP c x)
-``,
-EVAL_TAC THEN STRIP_TAC THEN Cases_on `MEM n x`
-THEN1 (FULL_SIMP_TAC bool_ss [])
-THEN1 (FULL_SIMP_TAC bool_ss []
-      THEN FULL_SIMP_TAC bool_ss [MAP, duplicate_free_def]))
-
-(* need this to obtain `colouring_ok c code live` for the proof later *)
-val colouring_ok_preserved = prove(``
-  no_dead_code (Inst n n0 n1 :: code) live /\
-  colouring_ok c (Inst n n0 n1 :: code) live ==>
-  colouring_ok c code live``,
-SIMP_TAC bool_ss [colouring_ok_def]
-THEN SIMP_TAC bool_ss [get_live_def]
-THEN STRIP_TAC
-THEN `duplicate_free (MAP c (delete n (get_live code live)))`
-      by METIS_TAC [duplicate_free_map_insertion]
-THEN FULL_SIMP_TAC bool_ss [delete_def]
-THEN cheat)
-
-(* TODO looks true but need to remove the `delete n`... *)
-
 
 
 (* no_dead_code is preserved by removing the first instruction *)
@@ -172,7 +143,7 @@ val no_dead_code_preserved = prove(``
 val colouring_ok_preserved = prove(``
     colouring_ok c (Inst n n0 n1 :: code) live ==>
     colouring_ok c code live``,
-  cheat); (* TODO: remove cheat! *)
+    RW_TAC std_ss [colouring_ok_def]);
 
 val colouring_ok_IMP_eval_apply = prove(``
    !code s t c live f.
