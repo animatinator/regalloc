@@ -119,7 +119,7 @@ val duplicate_free_def = Define `
 `
 
 val colouring_ok_def = Define `
-    (colouring_ok _ [] _ = T) /\
+    (colouring_ok c [] live = duplicate_free (MAP c live)) /\
     (colouring_ok c ((Inst w r1 r2)::code) live =
     		  duplicate_free (MAP c (get_live ((Inst w r1 r2)::code) live))
     		  /\ colouring_ok c code live)
@@ -164,51 +164,70 @@ val colouring_ok_IMP_eval_apply = prove(``
   THEN REVERSE (`(c n = c e) = (n = e)` by ALL_TAC)
   THEN1 FULL_SIMP_TAC std_ss []
   THEN Cases_on `n = e` THEN FULL_SIMP_TAC std_ss []
-  THEN FULL_SIMP_TAC std_ss [no_dead_code_def]
-  THEN cheat) (* TODO: remove cheat! *)
-
-(*
-
-(* plan: use the inductive lemma with appropriate substitutions for s and t.
-This will require transforming the conditions colouring_ok, no_dead_code etc.
-which work on (Inst n n0 n1 :: code) into ones working on code alone. *)
+  THEN FULL_SIMP_TAC std_ss [no_dead_code_def, colouring_ok_def]
+  THEN IMP_RES_TAC colouring_ok_injective)
 
 
-(* Other proof idea: use eval_get_live?
-Gives us MAP (eval f s code) live = MAP (eval f (t o c) code) live
-Can the RHS of that be rewritten to MAP (eval f t (apply c code) o c) live
-as needed?
-We have that c is ok so applying c to live doesn't conflate things
-Looking at definitions of eval and apply, it looks like the equality should
-be valid maybe *)
+val colouring_ok_injective = prove(``
+    ! c code live x y .
+      (no_dead_code code live) /\
+      (colouring_ok c code live) /\ ~(x = y) /\
+      (MEM x (get_live code live)) /\ (MEM y (get_live code live))
+    ==> ~(c x = c y)
+``,
+REVERSE (Induct_on `code`)
+THEN1 (REPEAT STRIP_TAC
+THEN Cases_on `h`
+THEN1 (IMP_RES_TAC colouring_ok_preserved
+THEN IMP_RES_TAC no_dead_code_preserved
+THEN cheat))
 
-(* attempting the rewrite needed *)
+THEN1 (
+EVAL_TAC
+THEN Induct_on `live`
+THEN1 (EVAL_TAC THEN DECIDE_TAC)
+THEN1 (REPEAT STRIP_TAC
+THEN FULL_SIMP_TAC std_ss [MAP, duplicate_free_def]
+THEN Cases_on `x = h`
+THEN1 (`~(y = h)` by METIS_TAC [] 
+THEN `MEM y live` by FULL_SIMP_TAC std_ss [MEM]
+THEN `MEM (c y) (MAP c live)` by METIS_TAC [MEM, MAP, MEM_MAP]
+THEN `~(MEM (c x) (MAP c live))` by METIS_TAC []
+THEN `~(c x = c y)` by METIS_TAC [])
+THEN1 (
+      Cases_on `y = h`
+      THEN1 (`~(x = h)` by METIS_TAC []
+      THEN `MEM x live` by FULL_SIMP_TAC std_ss [MEM]
+      THEN `MEM (c x) (MAP c live)` by METIS_TAC [MEM, MAP, MEM_MAP]
+      THEN `~(MEM (c y) (MAP c live))` by METIS_TAC []
+      THEN `~(c x = c y)` by METIS_TAC [])
+      THEN1 (`MEM x live` by METIS_TAC [MEM]
+      THEN `MEM y live` by METIS_TAC [MEM]
+      THEN `~(c x = c y)` by METIS_TAC [])
+      )
+)))
+
+
+(* attempting the other way around *)
+val mem_after_map = prove(``! x xs (c:num->num) .
+    MEM x xs ==> MEM (c x) (MAP c xs)``,
+RW_TAC std_ss [MEM_MAP] THEN Q.EXISTS_TAC `x`
+THEN EVAL_TAC THEN FULL_SIMP_TAC bool_ss [])
+
+
 ``
-! t c live f.
-MAP (eval f (t o c) code) live = MAP (eval f t (apply c code) o c) live
+    ! (c:num->num) code live x y .
+      (no_dead_code code live) /\
+      (colouring_ok c code live) /\ (c x = c y) /\
+      (MEM x (get_live code live)) /\ (MEM y (get_live code live))
+    ==> (x = y)
 ``
-Induct_on `code` THEN1 (EVAL_TAC THEN SIMP_TAC std_ss [])
-Cases_on `h`
-RW_TAC bool_ss [apply_def]
-RW_TAC bool_ss [eval_def]
-(* This looks potentially right. Need to rearrange the ((n =+ blah) o (t o c))
-to a modification of t compatible with the one it needs to be equal to so we
-can use the inductive hypothesis.
-Would be roughly this:
-(c n =+ x) (t o c) = ((n =+ x) t) o c
-*)
+Induct_on `code`
+EVAL_TAC
+REPEAT STRIP_TAC
+IMP_RES_TAC mem_after_map
+`MEM (c x) (MAP c live)` by FULL_SIMP_TAC std_ss []
+FULL_SIMP_TAC std_ss [MEM_MAP] (* ? *)
 
-``
-! c n x t .
-(c n =+ x) (t o c) = ((n =+ x) t) o c
-``
-RW_TAC bool_ss [o_DEF]
-RW_TAC bool_ss [UPDATE_def]
-(* Have to prove the functions are equal - can this be broken down into showing
-they're equal for an arbitrary argument? *)
-RW_TAC bool_ss [FUN_EQ_THM]
-(* Magnus: I don't think this is right *)
-
-*)
 
 val _ = export_theory();
