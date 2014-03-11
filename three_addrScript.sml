@@ -125,6 +125,42 @@ val colouring_ok_def = Define `
     		  /\ colouring_ok c code live)
 `
 
+(* proving a simplified version of the injectivity goal, for the case where
+'code' is empty *)
+val colouring_ok_injectivity_base = prove(``!(c:num->num) live x y .
+	colouring_ok c [] live /\ MEM x live /\ MEM y live /\ (c x = c y)
+	==> (x = y)
+``,
+FULL_SIMP_TAC std_ss [colouring_ok_def]
+THEN Induct_on `live`
+THEN1 (EVAL_TAC THEN DECIDE_TAC)
+THEN REPEAT STRIP_TAC
+THEN FULL_SIMP_TAC std_ss [MAP, duplicate_free_def]
+THEN Cases_on `x = y`
+(* t *)
+THEN1 DECIDE_TAC
+(* f *)
+THEN Cases_on `x = h`
+	 (* t *)
+	 THEN1(`MEM y live` by METIS_TAC [MEM]
+	 THEN IMP_RES_TAC mem_after_map
+	 THEN `MEM (c y) (MAP c live)` by METIS_TAC []
+	 THEN `~(MEM (c x) (MAP c live))` by METIS_TAC []
+	 THEN EVAL_TAC
+	 THEN METIS_TAC [])
+	 (* f *)
+	 THEN Cases_on `y = h`
+	      (* t *)
+	      THEN1(`MEM x live` by METIS_TAC [MEM]
+	      THEN IMP_RES_TAC mem_after_map
+	      THEN `MEM (c x) (MAP c live)` by METIS_TAC []
+	      THEN `~(MEM (c x) (MAP c live))` by METIS_TAC [])
+	      (* f *)
+	      THEN `MEM x live /\ MEM y live` by METIS_TAC [MEM]
+	      THEN `x = y` by METIS_TAC []
+)
+
+
 
 val no_dead_code_def = Define `
     (no_dead_code [] _ = T) /\
@@ -180,6 +216,11 @@ THEN1 (REPEAT STRIP_TAC
 THEN Cases_on `h`
 THEN1 (IMP_RES_TAC colouring_ok_preserved
 THEN IMP_RES_TAC no_dead_code_preserved
+
+(* Can't use the inductive hypothesis here as need MEM x (get_live code live)
+and MEM y (get_live code live) but currently have these goals for
+(n r0 r1)::code *)
+
 THEN cheat))
 
 THEN1 (
@@ -208,26 +249,10 @@ THEN1 (
 )))
 
 
-(* attempting the other way around *)
 val mem_after_map = prove(``! x xs (c:num->num) .
     MEM x xs ==> MEM (c x) (MAP c xs)``,
 RW_TAC std_ss [MEM_MAP] THEN Q.EXISTS_TAC `x`
 THEN EVAL_TAC THEN FULL_SIMP_TAC bool_ss [])
-
-
-``
-    ! (c:num->num) code live x y .
-      (no_dead_code code live) /\
-      (colouring_ok c code live) /\ (c x = c y) /\
-      (MEM x (get_live code live)) /\ (MEM y (get_live code live))
-    ==> (x = y)
-``
-Induct_on `code`
-EVAL_TAC
-REPEAT STRIP_TAC
-IMP_RES_TAC mem_after_map
-`MEM (c x) (MAP c live)` by FULL_SIMP_TAC std_ss []
-FULL_SIMP_TAC std_ss [MEM_MAP] (* ? *)
 
 
 val _ = export_theory();
