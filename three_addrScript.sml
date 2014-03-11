@@ -125,6 +125,11 @@ val colouring_ok_def = Define `
     		  /\ colouring_ok c code live)
 `
 
+val mem_after_map = prove(``! x xs (c:num->num) .
+    MEM x xs ==> MEM (c x) (MAP c xs)``,
+RW_TAC std_ss [MEM_MAP] THEN Q.EXISTS_TAC `x`
+THEN EVAL_TAC THEN FULL_SIMP_TAC bool_ss [])
+
 (* proving a simplified version of the injectivity goal, for the case where
 'code' is empty *)
 val colouring_ok_injectivity_base = prove(``!(c:num->num) live x y .
@@ -181,6 +186,34 @@ val colouring_ok_preserved = prove(``
     colouring_ok c code live``,
     RW_TAC std_ss [colouring_ok_def]);
 
+val duplicate_free_MAP_IMP_NEQ = prove(
+  ``!c live x y.
+      duplicate_free (MAP c live) /\ x <> y /\ MEM x live /\ MEM y live ==>
+      c x <> c y``,
+  Induct_on `live`
+  THEN1 (EVAL_TAC THEN DECIDE_TAC)
+  THEN REPEAT STRIP_TAC
+  THEN FULL_SIMP_TAC std_ss [MAP, duplicate_free_def]
+  THEN Cases_on `x = h` THEN1 (METIS_TAC [MEM, MAP, MEM_MAP])
+  THEN Cases_on `y = h` THEN1 (METIS_TAC [MEM, MAP, MEM_MAP])
+  THEN METIS_TAC [MEM]);
+
+val colouring_ok_IMP = prove(
+  ``colouring_ok c code live ==>
+    duplicate_free (MAP c (get_live code live))``,
+  Cases_on `code` THEN TRY (Cases_on `h`)
+  THEN cheat);
+
+val colouring_ok_injective = prove(``
+    ! c code live x y .
+      (no_dead_code code live) /\
+      (colouring_ok c code live) /\ ~(x = y) /\
+      (MEM x (get_live code live)) /\ (MEM y (get_live code live))
+    ==> ~(c x = c y) ``,
+  REPEAT STRIP_TAC
+  THEN IMP_RES_TAC colouring_ok_IMP
+  THEN IMP_RES_TAC duplicate_free_MAP_IMP_NEQ)
+
 val colouring_ok_IMP_eval_apply = prove(``
    !code s t c live f.
       colouring_ok c code live /\ no_dead_code code live /\
@@ -202,57 +235,5 @@ val colouring_ok_IMP_eval_apply = prove(``
   THEN Cases_on `n = e` THEN FULL_SIMP_TAC std_ss []
   THEN FULL_SIMP_TAC std_ss [no_dead_code_def, colouring_ok_def]
   THEN IMP_RES_TAC colouring_ok_injective)
-
-
-val colouring_ok_injective = prove(``
-    ! c code live x y .
-      (no_dead_code code live) /\
-      (colouring_ok c code live) /\ ~(x = y) /\
-      (MEM x (get_live code live)) /\ (MEM y (get_live code live))
-    ==> ~(c x = c y)
-``,
-REVERSE (Induct_on `code`)
-THEN1 (REPEAT STRIP_TAC
-THEN Cases_on `h`
-THEN1 (IMP_RES_TAC colouring_ok_preserved
-THEN IMP_RES_TAC no_dead_code_preserved
-
-(* Can't use the inductive hypothesis here as need MEM x (get_live code live)
-and MEM y (get_live code live) but currently have these goals for
-(n r0 r1)::code *)
-
-THEN cheat))
-
-THEN1 (
-EVAL_TAC
-THEN Induct_on `live`
-THEN1 (EVAL_TAC THEN DECIDE_TAC)
-THEN1 (REPEAT STRIP_TAC
-THEN FULL_SIMP_TAC std_ss [MAP, duplicate_free_def]
-THEN Cases_on `x = h`
-THEN1 (`~(y = h)` by METIS_TAC [] 
-THEN `MEM y live` by FULL_SIMP_TAC std_ss [MEM]
-THEN `MEM (c y) (MAP c live)` by METIS_TAC [MEM, MAP, MEM_MAP]
-THEN `~(MEM (c x) (MAP c live))` by METIS_TAC []
-THEN `~(c x = c y)` by METIS_TAC [])
-THEN1 (
-      Cases_on `y = h`
-      THEN1 (`~(x = h)` by METIS_TAC []
-      THEN `MEM x live` by FULL_SIMP_TAC std_ss [MEM]
-      THEN `MEM (c x) (MAP c live)` by METIS_TAC [MEM, MAP, MEM_MAP]
-      THEN `~(MEM (c y) (MAP c live))` by METIS_TAC []
-      THEN `~(c x = c y)` by METIS_TAC [])
-      THEN1 (`MEM x live` by METIS_TAC [MEM]
-      THEN `MEM y live` by METIS_TAC [MEM]
-      THEN `~(c x = c y)` by METIS_TAC [])
-      )
-)))
-
-
-val mem_after_map = prove(``! x xs (c:num->num) .
-    MEM x xs ==> MEM (c x) (MAP c xs)``,
-RW_TAC std_ss [MEM_MAP] THEN Q.EXISTS_TAC `x`
-THEN EVAL_TAC THEN FULL_SIMP_TAC bool_ss [])
-
 
 val _ = export_theory();
