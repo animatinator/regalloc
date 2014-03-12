@@ -202,7 +202,8 @@ val colouring_ok_IMP = prove(
   ``colouring_ok c code live ==>
     duplicate_free (MAP c (get_live code live))``,
   Cases_on `code` THEN TRY (Cases_on `h`)
-  THEN cheat);
+  THEN EVAL_TAC
+  THEN RW_TAC std_ss [colouring_ok_def]);
 
 val colouring_ok_injective = prove(``
     ! c code live x y .
