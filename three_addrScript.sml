@@ -118,6 +118,32 @@ val duplicate_free_def = Define `
     (duplicate_free (x::xs) = ~(MEM x xs) /\ duplicate_free xs)
 `
 
+val conflicting_sets_def = Define `
+    (conflicting_sets [] live = [live]) /\
+    (conflicting_sets ((Inst w r1 r2)::code) live =
+        (get_live ((Inst w r1 r2)::code) live)::(conflicting_sets code live))
+`
+
+val colouring_respects_conflicting_sets_def = Define `
+    (colouring_respects_conflicting_sets (c:num->num) [] = T) /\
+    (colouring_respects_conflicting_sets c (s::ss) =
+        duplicate_free (MAP c s) /\ colouring_respects_conflicting_sets c ss)
+`
+
+val colouring_ok_alt_def = Define `
+    (colouring_ok_alt c code live =
+        colouring_respects_conflicting_sets c (conflicting_sets code live))
+`
+
+val colouring_ok_def_equivalence = prove(
+    ``colouring_ok_alt c code live = colouring_ok c code live``,
+    Induct_on `code`
+    THEN1 EVAL_TAC
+    THEN Cases_on `h`
+    THEN FULL_SIMP_TAC std_ss [colouring_ok_alt_def, colouring_ok_def,
+	      conflicting_sets_def, colouring_respects_conflicting_sets_def])
+
+
 val colouring_ok_def = Define `
     (colouring_ok c [] live = duplicate_free (MAP c live)) /\
     (colouring_ok c ((Inst w r1 r2)::code) live =
