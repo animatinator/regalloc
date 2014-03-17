@@ -135,6 +135,13 @@ val colouring_ok_alt_def = Define `
         colouring_respects_conflicting_sets c (conflicting_sets code live))
 `
 
+val colouring_ok_def = Define `
+    (colouring_ok c [] live = duplicate_free (MAP c live)) /\
+    (colouring_ok c ((Inst w r1 r2)::code) live =
+    		  duplicate_free (MAP c (get_live ((Inst w r1 r2)::code) live))
+    		  /\ colouring_ok c code live)
+`
+
 val colouring_ok_def_equivalence = prove(
     ``colouring_ok_alt c code live = colouring_ok c code live``,
     Induct_on `code`
@@ -144,12 +151,6 @@ val colouring_ok_def_equivalence = prove(
 	      conflicting_sets_def, colouring_respects_conflicting_sets_def])
 
 
-val colouring_ok_def = Define `
-    (colouring_ok c [] live = duplicate_free (MAP c live)) /\
-    (colouring_ok c ((Inst w r1 r2)::code) live =
-    		  duplicate_free (MAP c (get_live ((Inst w r1 r2)::code) live))
-    		  /\ colouring_ok c code live)
-`
 
 val mem_after_map = prove(``! x xs (c:num->num) .
     MEM x xs ==> MEM (c x) (MAP c xs)``,
