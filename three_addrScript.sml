@@ -37,6 +37,9 @@ val insert_mapping = prove(
   (MAP s list = MAP t list)``,
   RW_TAC bool_ss [insert_def, MAP])
 
+val map_identity = prove(``!list . MAP (\x.x) list = list``,
+    Induct_on `list` THEN1 EVAL_TAC THEN RW_TAC bool_ss [MAP])
+
 
 
 (* annotate code with live ranges *)
@@ -116,6 +119,24 @@ THEN1 (
 val duplicate_free_def = Define `
     (duplicate_free [] = T) /\
     (duplicate_free (x::xs) = ~(MEM x xs) /\ duplicate_free xs)
+
+val duplicate_free_insertion = prove(``
+    !n . duplicate_free (insert n list) = duplicate_free list``,
+Induct_on `list` THEN1 (EVAL_TAC THEN DECIDE_TAC)
+THEN RW_TAC bool_ss [insert_def] THEN RW_TAC bool_ss [duplicate_free_def])
+
+val duplicate_free_deletion = prove(``
+    !n . duplicate_free (delete n list) = duplicate_free list``,
+Induct_on `list` THEN1 (EVAL_TAC THEN DECIDE_TAC)
+THEN RW_TAC bool_ss [delete_def] THEN cheat) (*todo*)
+
+val get_live_has_no_duplicates = prove(``
+!code live . duplicate_free live ==> duplicate_free (get_live code live)``,
+Induct_on `code` THEN1 (EVAL_TAC THEN DECIDE_TAC)
+THEN REPEAT STRIP_TAC
+THEN Cases_on `h`
+THEN RW_TAC bool_ss [get_live_def]
+THEN RW_TAC bool_ss [duplicate_free_insertion, duplicate_free_deletion])
 `
 
 val conflicting_sets_def = Define `

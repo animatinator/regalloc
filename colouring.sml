@@ -15,15 +15,14 @@ val getConflicts_def = Define `
 `
 
 (* prove that a colouring obeying the constraints is a valid colouring *)
-``
-!c code live .
-(! x y . (getConflicts code live) x y
-==>
-c x <> c y)
-==>
-(colouring_ok c code live)
-``
-(* todo *)
+val getConflicts_colouing_ok = prove(``
+    !c code live .
+    (! x y . (getConflicts code live) x y ==> c x <> c y)
+       ==> (colouring_ok c code live)``,
+Induct_on `code`
+THEN RW_TAC bool_ss [getConflicts_def, colouring_ok_def]
+THEN cheat) (* the remaining goal can't be proved - will need to formulate this
+differently *)
 
 
 (* very basic colouring algorithm *)
@@ -47,3 +46,26 @@ a section of code *)
 val basic_colouring_def = Define `
     (basic_colouring code = build_basic_colouring 0 (get_registers code))
 `
+
+
+(* prove the basic algorithm is correct in the absence of prior live
+variables *)
+val basic_colouring_ok = prove(``
+    !code . colouring_ok (basic_colouring code) code []``,
+Induct_on `code` THEN1 (EVAL_TAC THEN DECIDE_TAC)
+THEN RW_TAC bool_ss [basic_colouring_def]
+THEN Cases_on `h`
+THEN RW_TAC bool_ss [get_registers_def]
+THEN cheat)
+(* WIP - awkward to prove with the three inserts at the moment, may need a
+different approach *)
+
+
+(* Very simplified naive colouring proof *)
+val identity_colouring_ok = prove(``!code . colouring_ok (\x . x) code []``,
+Induct_on `code` THEN1 (EVAL_TAC THEN DECIDE_TAC)
+THEN Cases_on `h`
+THEN RW_TAC bool_ss [colouring_ok_def, get_live_def, map_identity]
+THEN RW_TAC bool_ss [duplicate_free_insertion, duplicate_free_deletion]
+THEN `duplicate_free ([]:num list)` by EVAL_TAC
+THEN METIS_TAC [get_live_has_no_duplicates])
