@@ -5,24 +5,23 @@ open arithmeticTheory listTheory combinTheory pairTheory
 
 
 (* get the list of pairs which mustn't be assigned the same colour *)
-val getConflicts_def = Define `
-    (getConflicts [] live x y = ~(MEM x live) \/ ~(MEM y live)) /\
-    (getConflicts ((Inst r0 r1 r2)::code) live x y =
-		     (~(MEM x (get_live ((Inst r0 r1 r2)::code) live))
-		     \/ ~(MEM y (get_live ((Inst r0 r1 r2)::code) live)))
-		     /\ (getConflicts code live x y)
+val get_conflicts_def = Define `
+    (get_conflicts [] live x y = (MEM x live) /\ (MEM y live)) /\
+    (get_conflicts ((Inst r0 r1 r2)::code) live x y =
+		     (MEM x (get_live ((Inst r0 r1 r2)::code) live)
+		     /\ MEM y (get_live ((Inst r0 r1 r2)::code) live))
+		     \/ (get_conflicts code live x y)
     )
 `
 
 (* prove that a colouring obeying the constraints is a valid colouring *)
-val getConflicts_colouing_ok = prove(``
+val get_conflicts_colouing_ok = prove(``
     !c code live .
-    (! x y . (getConflicts code live) x y ==> c x <> c y)
+    (! x y . (get_conflicts code live) x y ==> c x <> c y)
        ==> (colouring_ok c code live)``,
 Induct_on `code`
-THEN RW_TAC bool_ss [getConflicts_def, colouring_ok_def]
-THEN cheat) (* the remaining goal can't be proved - will need to formulate this
-differently *)
+THEN RW_TAC bool_ss [get_conflicts_def, colouring_ok_def]
+THEN cheat) (*todo*)
 
 
 (* very basic colouring algorithm *)
