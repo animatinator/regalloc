@@ -186,8 +186,9 @@ val list_union_flatten_def = Define `
 
 (* gather list of conflicting registers for a given register *)
 val conflicts_for_register_def = Define `
-    (conflicts_for_register r code live = list_union_flatten
-        (FILTER (\set . MEM r set) (conflicting_sets code live))
+    (conflicts_for_register r code live = delete r
+        (list_union_flatten
+            (FILTER (\set . MEM r set) (conflicting_sets code live)))
     )
 `
 
@@ -198,11 +199,15 @@ val get_registers_def = Define `
     		   insert r0 (insert r1 (insert r2 (get_registers code live))))
 `
 
+(* get conflicts between registers in the format:
+   [(register, [conflicting_register; ...]); ...] *)
 val get_conflicts_def = Define `
     (get_conflicts code live =
-        MAP (\reg . conflicts_for_register reg code live)
+        MAP (\reg . (reg, conflicts_for_register reg code live))
 	(get_registers code live))
 `
+
+val test_conflicts = EVAL ``get_conflicts [Inst 1 2 3; Inst 0 1 2] [0]``
 
 
 
