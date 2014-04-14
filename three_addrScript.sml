@@ -119,6 +119,7 @@ THEN1 (
 val duplicate_free_def = Define `
     (duplicate_free [] = T) /\
     (duplicate_free (x::xs) = ~(MEM x xs) /\ duplicate_free xs)
+`
 
 val duplicate_free_insertion = prove(``
     !n . duplicate_free (insert n list) = duplicate_free list``,
@@ -137,7 +138,7 @@ THEN REPEAT STRIP_TAC
 THEN Cases_on `h`
 THEN RW_TAC bool_ss [get_live_def]
 THEN RW_TAC bool_ss [duplicate_free_insertion, duplicate_free_deletion])
-`
+
 
 val conflicting_sets_def = Define `
     (conflicting_sets [] live = [live]) /\
@@ -170,6 +171,38 @@ val colouring_ok_def_equivalence = prove(
     THEN Cases_on `h`
     THEN FULL_SIMP_TAC std_ss [colouring_ok_alt_def, colouring_ok_def,
 	      conflicting_sets_def, colouring_respects_conflicting_sets_def])
+
+
+(* compute the union of two sets represented as lists *)
+val list_union_def = Define `
+    (list_union [] ys = ys) /\
+    (list_union (x::xs) ys = insert x (list_union xs ys))
+`
+
+val list_union_flatten_def = Define `
+    (list_union_flatten [] = []) /\
+    (list_union_flatten (l::ls) = list_union l (list_union_flatten ls))
+`
+
+(* gather list of conflicting registers for a given register *)
+val conflicts_for_register_def = Define `
+    (conflicts_for_register r code live = list_union_flatten
+        (FILTER (\set . MEM r set) (conflicting_sets code live))
+    )
+`
+
+(* gather list of registers used by a program *)
+val get_registers_def = Define `
+    (get_registers [] live = live) /\
+    (get_registers ((Inst r0 r1 r2)::code) live =
+    		   insert r0 (insert r1 (insert r2 (get_registers code live))))
+`
+
+val get_conflicts_def = Define `
+    (get_conflicts code live =
+        MAP (\reg . conflicts_for_register reg code live)
+	(get_registers code live))
+`
 
 
 
@@ -284,5 +317,6 @@ val colouring_ok_IMP_eval_apply = prove(``
   THEN Cases_on `n = e` THEN FULL_SIMP_TAC std_ss []
   THEN FULL_SIMP_TAC std_ss [no_dead_code_def, colouring_ok_def]
   THEN IMP_RES_TAC colouring_ok_injective)
+
 
 val _ = export_theory();

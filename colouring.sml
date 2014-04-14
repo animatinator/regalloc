@@ -6,8 +6,9 @@ open arithmeticTheory listTheory combinTheory pairTheory
 
 (* get the list of pairs which mustn't be assigned the same colour *)
 val get_conflicts_def = Define `
-    (get_conflicts [] live x y = (MEM x live) /\ (MEM y live)) /\
+    (get_conflicts [] live x y = x <> y /\ (MEM x live) /\ (MEM y live)) /\
     (get_conflicts ((Inst r0 r1 r2)::code) live x y =
+    		     x <> y /\
 		     (MEM x (get_live ((Inst r0 r1 r2)::code) live)
 		     /\ MEM y (get_live ((Inst r0 r1 r2)::code) live))
 		     \/ (get_conflicts code live x y)
@@ -15,13 +16,28 @@ val get_conflicts_def = Define `
 `
 
 (* prove that a colouring obeying the constraints is a valid colouring *)
-val get_conflicts_colouing_ok = prove(``
+val get_conflicts_colouring_ok = prove(``
     !c code live .
+    duplicate_free live /\
     (! x y . (get_conflicts code live) x y ==> c x <> c y)
        ==> (colouring_ok c code live)``,
 Induct_on `code`
 THEN RW_TAC bool_ss [get_conflicts_def, colouring_ok_def]
-THEN cheat) (*todo*)
+THEN Cases_on `live`
+EVAL_TAC
+cheat
+(*inductive now *)
+REPEAT STRIP_TAC
+`! x y . get_conflicts code live x y ==> c x <> c y` by ALL_TAC
+REPEAT STRIP_TAC
+`get_conflicts (h::code) live x y` by ALL_TAC
+Cases_on `h`
+RW_TAC bool_ss [get_conflicts_def]
+METIS_TAC []
+`colouring_ok c code live` by METIS_TAC []
+Cases_on `h`
+RW_TAC bool_ss [colouring_ok_def, get_live_def, MAP]
+(* stuck *)
 
 
 (* very basic colouring algorithm *)
