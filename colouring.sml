@@ -84,3 +84,52 @@ THEN RW_TAC bool_ss [colouring_ok_def, get_live_def, map_identity]
 THEN RW_TAC bool_ss [duplicate_free_insertion, duplicate_free_deletion]
 THEN `duplicate_free ([]:num list)` by EVAL_TAC
 THEN METIS_TAC [get_live_has_no_duplicates])
+
+
+
+(* Colouring satisfies constraints *)
+val colouring_satisfactory_def = Define `
+    (colouring_satisfactory col [] = T) /\
+    (colouring_satisfactory col ((r, rs)::cs) = ~(MEM (col r) (MAP col rs))
+    			    /\ (colouring_satisfactory col cs))
+`
+
+
+(* Identity colouring *)
+val identity_colouring_def = Define `
+    (identity_colouring constraints = \x.x)
+`
+
+(* Naive colouring *)
+
+val naive_colouring_aux_def = Define `
+    (naive_colouring_aux [] n = (\ x . n)) /\
+    (naive_colouring_aux ((r, rs)::cs) n =
+    			 (r =+ n) (naive_colouring_aux cs (n+1)))
+`
+
+val naive_colouring_def = Define `
+    (naive_colouring constraints = naive_colouring_aux constraints 0)
+`
+
+(* Lowest-first colouring:
+Take the supplied constraints in order, and assign to each register the
+lowest colour which doesn't conflict *)
+(* Doesn't work just now as smallest_nonmember can't be proven total *)
+
+(*val smallest_nonmember_def = Define `
+    (smallest_nonmember list x = if ~(MEM x list) then x
+    			else (smallest_nonmember list (x+1)))
+`
+
+val lowest_available_colour_def = Define `
+    (lowest_available_colour col cs = smallest_satisfying
+        (\x . ~MEM x (MAP col cs)) 0)
+`
+
+val lowest_first_colouring_def = Define `
+    (lowest_first_colouring [] = \x.0) /\
+    (lowest_first_colouring ((r, rs)::cs) =
+        let col = (lowest_first_colouring cs) in
+	let lowest_available = (lowest_available_colour col rs)
+`*)
