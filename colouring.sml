@@ -135,26 +135,6 @@ val lowest_first_colouring_def = Define `
 `*)
 
 
-``
-!cs.colouring_satisfactory (naive_colouring cs) cs
-``
-Induct_on `cs`
-EVAL_TAC
-
-Cases_on `h`
-EVAL_TAC
-(* show colouring_satisfactory (naive_colouring_aux cs 1) cs
-by implication from the assumptions (should be valid?) *)
-(* show that (q =+ 0) is still satisfactory, part of goal done *)
-(* need that q isn't a member of r... Make that an assumption.
-Will need to prove that there are no instances of a register conflicting
-with itself in the definition of get_conflicts *)
-`colouring_satisfactory (naive_colouring_aux cs 1) cs` by cheat
-`colouring_satisfactory ((q =+ 0) (naive_colouring_aux cs 1)) cs` by cheat
-FULL_SIMP_TAC bool_ss []
-`~(MEM q r)` by cheat
-
-
 val naive_colouring_step = prove(``
 (naive_colouring_aux ((q,r)::cs) n) = (q=+n) (naive_colouring_aux cs (n + 1))
 ``, FULL_SIMP_TAC std_ss [naive_colouring_aux_def])
@@ -185,6 +165,29 @@ IMP_RES_TAC function_irrelevant_update THEN
 METIS_TAC [function_irrelevant_update, naive_colouring_aux_def])
 
 
+
+(* This goal seems like the crux of the next goal *)
+val naive_colouring_colours_all_new = prove(``
+! cs n x.
+(naive_colouring_aux cs (n+1)) (x) <> n
+``, 
+Induct_on `cs` THEN1 (EVAL_TAC THEN DECIDE_TAC) THEN
+Cases_on `h` THEN
+EVAL_TAC THEN 
+Cases_on `q = x` THEN1 (STRIP_TAC THEN EVAL_TAC THEN DECIDE_TAC) THEN
+STRIP_TAC THEN
+EVAL_TAC THEN
+`naive_colouring_aux cs ((n+1) + 1) x <> n` by cheat)
+(* TODO instantiate assumption to solve this *)
+
+(* This next goal is the main missing part of the proof:
+``
+! n cs.
+colouring_satisfactory (naive_colouring_aux cs (n+1))
+==>
+colouring_satisfactory ((q += n) (naive_colouring_aux cs (n+1)))
+``
+*)
 
 val naive_colouring_aux_satisfactory = prove(``
 !cs n . colouring_satisfactory (naive_colouring_aux cs n) cs
