@@ -3,6 +3,7 @@ open HolKernel Parse boolLib bossLib;
 open arithmeticTheory listTheory combinTheory pairTheory
      finite_mapTheory relationTheory optionTheory pred_setTheory;
 
+open three_addrTheory;
 
 (* get the list of pairs which mustn't be assigned the same colour *)
 val get_conflicts_def = Define `
@@ -170,10 +171,10 @@ METIS_TAC [function_irrelevant_update, naive_colouring_aux_def])
 val naive_colouring_colours_all_new = prove(``
 ! cs n x.
 (naive_colouring_aux cs (n+1)) (x) <> n
-``, 
+``,
 Induct_on `cs` THEN1 (EVAL_TAC THEN DECIDE_TAC) THEN
 Cases_on `h` THEN
-EVAL_TAC THEN 
+EVAL_TAC THEN
 Cases_on `q = x` THEN1 (STRIP_TAC THEN EVAL_TAC THEN DECIDE_TAC) THEN
 STRIP_TAC THEN
 EVAL_TAC THEN
@@ -203,25 +204,17 @@ THEN cheat)
 the assumption ~(MEM q r) can be added (means a register does not clash with
 itself and does hold of the get_conflicts implementation).
 Second can't be directly proved as-is
+
+  Magnus: I don't think you can prove ~(MEM q r) from that subgoal state.
+
 *)
 
 
 val naive_colouring_aux_satisfactory_implication = prove(``
-(!cs n . colouring_satisfactory (naive_colouring_aux cs n) cs)
-==> (!cs n . colouring_satisfactory (naive_colouring cs) cs)
+(!(cs:('a # 'a list) list) n . colouring_satisfactory (naive_colouring_aux cs n) cs)
+==> (!(cs:('a # 'a list) list) n . colouring_satisfactory (naive_colouring cs) cs)
 ``,
 REPEAT STRIP_TAC THEN
 Cases_on `cs` THEN1 EVAL_TAC THEN
 Cases_on `h` THEN
-FULL_SIMP_TAC bool_ss [naive_colouring_def]
-THEN cheat)
-(*
-    
-    colouring_satisfactory (naive_colouring_aux ((q,r)::t) 0) ((q,r)::t)
-    ------------------------------------
-      !cs n. colouring_satisfactory (naive_colouring_aux cs n) cs
-     : proof
-
-last goal is instance of the assumption, but can't work out how to
-instantiate the assumption to prove the goal
-(cs = ((q,r)::t), n = 0 should work) *)
+FULL_SIMP_TAC bool_ss [naive_colouring_def])

@@ -37,7 +37,8 @@ val insert_mapping = prove(
   (MAP s list = MAP t list)``,
   RW_TAC bool_ss [insert_def, MAP])
 
-val map_identity = prove(``!list . MAP (\x.x) list = list``,
+val map_identity = store_thm("map_identity",
+  ``!list . MAP (\x.x) list = list``,
     Induct_on `list` THEN1 EVAL_TAC THEN RW_TAC bool_ss [MAP])
 
 
@@ -121,17 +122,17 @@ val duplicate_free_def = Define `
     (duplicate_free (x::xs) = ~(MEM x xs) /\ duplicate_free xs)
 `
 
-val duplicate_free_insertion = prove(``
+val duplicate_free_insertion = store_thm("duplicate_free_insertion",``
     !n . duplicate_free (insert n list) = duplicate_free list``,
 Induct_on `list` THEN1 (EVAL_TAC THEN DECIDE_TAC)
 THEN RW_TAC bool_ss [insert_def] THEN RW_TAC bool_ss [duplicate_free_def])
 
-val duplicate_free_deletion = prove(``
+val duplicate_free_deletion = store_thm("duplicate_free_deletion",``
     !n . duplicate_free (delete n list) = duplicate_free list``,
 Induct_on `list` THEN1 (EVAL_TAC THEN DECIDE_TAC)
 THEN RW_TAC bool_ss [delete_def] THEN cheat) (*todo*)
 
-val get_live_has_no_duplicates = prove(``
+val get_live_has_no_duplicates = store_thm("get_live_has_no_duplicates",``
 !code live . duplicate_free live ==> duplicate_free (get_live code live)``,
 Induct_on `code` THEN1 (EVAL_TAC THEN DECIDE_TAC)
 THEN REPEAT STRIP_TAC
