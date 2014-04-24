@@ -3,6 +3,7 @@ open HolKernel Parse boolLib bossLib;
 open arithmeticTheory listTheory combinTheory pairTheory
      finite_mapTheory relationTheory optionTheory pred_setTheory;
 
+open three_addrTheory;
 
 (* Colouring satisfies constraints *)
 val colouring_satisfactory_def = Define `
@@ -87,10 +88,10 @@ METIS_TAC [function_irrelevant_update, naive_colouring_aux_def])
 val naive_colouring_colours_all_new = prove(``
 ! (cs:(num # num) list) (n:num) (x:num) .
 (naive_colouring_aux cs (n+1)) (x) <> n
-``, 
+``,
 Induct_on `cs` THEN1 (EVAL_TAC THEN DECIDE_TAC) THEN
 Cases_on `h` THEN
-EVAL_TAC THEN 
+EVAL_TAC THEN
 Cases_on `q = x` THEN1 (STRIP_TAC THEN EVAL_TAC THEN DECIDE_TAC) THEN
 STRIP_TAC THEN
 EVAL_TAC THEN
@@ -121,6 +122,9 @@ THEN cheat)
 the assumption ~(MEM q r) can be added (means a register does not clash with
 itself and does hold of the get_conflicts implementation).
 Second can't be directly proved as-is
+
+  Magnus: I don't think you can prove ~(MEM q r) from that subgoal state.
+
 *)
 
 
