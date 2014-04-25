@@ -193,7 +193,7 @@ colouring_satisfactory (naive_colouring cs) cs``
 
 
 (* Determines whether a heuristic is acceptable
-An acceptable heuristic only re-orders the input constraints *)
+(*An acceptable heuristic only re-orders the input constraints *)
 val heuristic_ok_def = Define `
     (heuristic_ok f 
-`
+`*)
