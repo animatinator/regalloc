@@ -6,6 +6,12 @@ open arithmeticTheory listTheory combinTheory pairTheory
 open three_addrTheory;
 
 
+(* Get list of vertices from a graph *)
+val get_vertices_def = Define `
+    (get_vertices [] = []) /\
+    (get_vertices ((v, vs)::es) = v::(get_vertices es))
+`
+
 (* Graph contains a vertex *)
 val has_vertex_def = Define `
     (has_vertex [] (v:num) = F) /\
@@ -14,9 +20,7 @@ val has_vertex_def = Define `
 
 (* Graph has no duplicate vertices *)
 val no_duplicate_vertices_def = Define `
-    (no_duplicate_vertices [] = T) /\
-    (no_duplicate_vertices ((v, _)::cs) = ~(has_vertex cs v)
-    			   /\ no_duplicate_vertices cs)
+    (no_duplicate_vertices graph = duplicate_free (get_vertices graph))
 `
 
 (* Vertex is not linked to itself *)
@@ -36,6 +40,13 @@ val colouring_satisfactory_def = Define `
     (colouring_satisfactory col [] = T) /\
     (colouring_satisfactory col ((r, rs)::cs) = ~(MEM (col r) (MAP col rs))
     			    /\ (colouring_satisfactory col cs))
+`
+
+(* Simplified version of colouring satisfying constraints:
+Colouring satisfies top constraint *)
+val colouring_satisfactory_top_def = Define `
+    (colouring_satisfactory col [] = T) /\
+    (colouring_satisfactory col ((r, rs)::cs) = ~(MEM (col r) (MAP col rs)))
 `
 
 
@@ -156,6 +167,16 @@ cheat) (* TODO *)
 ``
 *)
 
+val map_doesnt_contain_unused_values = prove(``
+    ! list f n .
+    (!x . f x <> n) ==> ~(MEM n (MAP f list))
+``,
+Induct_on `list` THEN1 (EVAL_TAC THEN DECIDE_TAC) THEN
+REPEAT STRIP_TAC THEN
+`~(MEM n (MAP f list))` by METIS_TAC [] THEN
+FULL_SIMP_TAC std_ss [MAP, MEM] THEN
+METIS_TAC [])
+
 val naive_colouring_aux_satisfactory = prove(``
 !cs n . colouring_satisfactory (naive_colouring_aux cs n) cs
 ``,
@@ -163,17 +184,21 @@ Induct_on `cs` THEN1 (EVAL_TAC THEN DECIDE_TAC) THEN
 Cases_on `h` THEN
 EVAL_TAC THEN
 STRIP_TAC THEN
-STRIP_TAC THEN
+STRIP_TAC THEN1 (
 `colouring_satisfactory (naive_colouring_aux cs (n + 1)) cs` by METIS_TAC []
-THEN cheat)
-(* First subgoal is provable with colouring_map_with_unused_update, provided
-the assumption ~(MEM q r) can be added (means a register does not clash with
-itself and does hold of the get_conflicts implementation).
-Second can't be directly proved as-is
-
-  Magnus: I don't think you can prove ~(MEM q r) from that subgoal state.
-
-*)
+THEN
+`~(MEM q r)` by cheat (* use the fact that the edge list is well-formed *)
+(* need to add this to the assumptions of the overall goal *)
+THEN
+(* Now use the fact that naive colouring only assigns values upwards from n+1
+This is the attempted proof above *)
+`!x . (naive_colouring_aux cs (n + 1)) x <> n` by cheat THEN
+FULL_SIMP_TAC std_ss [colouring_map_with_unused_update] THEN
+METIS_TAC [map_doesnt_contain_unused_values])
+THEN
+(* Remaining goal seems like a possible lemma - giving a register a value which
+is unused by any other should preserve colouring_satisfactory? *)
+cheat)
 
 
 val naive_colouring_aux_satisfactory_implication = prove(``
