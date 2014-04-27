@@ -333,7 +333,7 @@ METIS_TAC [])
 
 val highest_degree_def = Define `
     (highest_degree (_, []) = 0) /\
-    (highest_degree (r, (x::xs)) = (get_degree (r, xs)) + 1)
+    (highest_degree (r, (x::xs)) = (highest_degree (r, xs)) + 1)
 `
 
 val highest_degree_correctness = prove(``heuristic_ok highest_degree``,
