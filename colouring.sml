@@ -158,7 +158,7 @@ Cases_on `q = x` THEN1 (FULL_SIMP_TAC bool_ss []) THEN
 FULL_SIMP_TAC bool_ss [])
 
 val naive_colouring_colours_greater_than_n = prove(``
-! (cs:(num # num) list) (n:num) (x:num) .
+! (cs:(num # num list) list) (n:num) (x:num) .
 (naive_colouring_aux cs (n+1) x) > n
 ``,
 Induct_on `cs` THEN1 (REPEAT STRIP_TAC THEN EVAL_TAC THEN DECIDE_TAC) THEN
@@ -177,7 +177,7 @@ METIS_TAC [])
 
 (* This goal seems like the crux of the next goal *)
 val naive_colouring_colours_all_new = prove(``
-! (cs:(num # num) list) (n:num) (x:num) .
+! (cs:(num # num list) list) (n:num) (x:num) .
 (naive_colouring_aux cs (n+1)) (x) <> n
 ``,
 REPEAT STRIP_TAC THEN
@@ -185,14 +185,26 @@ REPEAT STRIP_TAC THEN
 by METIS_TAC [naive_colouring_colours_greater_than_n] THEN
 DECIDE_TAC)
 
-(* This next goal is the main missing part of the proof:
-``
+
+
+(* This next goal is the main missing part of the proof: *)
+val naive_colouring_satisfactory_with_unused_value = prove(``
 ! n cs q.
 (colouring_satisfactory (naive_colouring_aux cs (n+1)) cs)
 ==>
-(colouring_satisfactory ((q += n) (naive_colouring_aux cs (n+1))) cs)
-``
-*)
+(colouring_satisfactory ((q =+ n) (naive_colouring_aux cs (n+1))) cs)
+``,
+Induct_on `cs` THEN1 (EVAL_TAC THEN DECIDE_TAC) THEN
+REPEAT STRIP_TAC THEN
+Cases_on `h`
+`colouring_satisfactory (naive_colouring_aux ((q', r)::cs) (n + 1)) cs` by METIS_TAC [colouring_satisfactory_def]
+`colouring_satisfactory (naive_colouring_aux cs (n + 1)) cs` by cheat
+`colouring_satisfactory ((q =+ n) (naive_colouring_aux cs (n + 1))) cs` by METIS_TAC []
+FULL_SIMP_TAC bool_ss [naive_colouring_aux_def]
+FULL_SIMP_TAC bool_ss [colouring_satisfactory_def]
+cheat)
+
+
 
 val map_doesnt_contain_unused_values = prove(``
     ! list f n .
@@ -205,27 +217,25 @@ FULL_SIMP_TAC std_ss [MAP, MEM] THEN
 METIS_TAC [])
 
 val naive_colouring_aux_satisfactory = prove(``
-!cs n . colouring_satisfactory (naive_colouring_aux cs n) cs
+!(cs:(num # num list) list) (n:num) . colouring_satisfactory (naive_colouring_aux cs n) cs
 ``,
 Induct_on `cs` THEN1 (EVAL_TAC THEN DECIDE_TAC) THEN
 Cases_on `h` THEN
 EVAL_TAC THEN
 STRIP_TAC THEN
 STRIP_TAC THEN1 (
+	  `colouring_satisfactory (naive_colouring_aux cs (n + 1)) cs`
+	  by METIS_TAC [] THEN
+	  (* now use the fact that the edge list is well-formed - need to add
+	  this fact to the overall goal's assumptions *)
+	  `~(MEM q r)` by cheat THEN
+	  `!x . (naive_colouring_aux cs (n + 1)) x <> n`
+	  by METIS_TAC [naive_colouring_colours_all_new] THEN
+	  FULL_SIMP_TAC std_ss [colouring_map_with_unused_update] THEN
+	  METIS_TAC [map_doesnt_contain_unused_values])
+THEN
 `colouring_satisfactory (naive_colouring_aux cs (n + 1)) cs` by METIS_TAC []
-THEN
-`~(MEM q r)` by cheat (* use the fact that the edge list is well-formed *)
-(* need to add this to the assumptions of the overall goal *)
-THEN
-(* Now use the fact that naive colouring only assigns values upwards from n+1
-This is the attempted proof above *)
-`!x . (naive_colouring_aux cs (n + 1)) x <> n` by cheat THEN
-FULL_SIMP_TAC std_ss [colouring_map_with_unused_update] THEN
-METIS_TAC [map_doesnt_contain_unused_values])
-THEN
-(* Remaining goal seems like a possible lemma - giving a register a value which
-is unused by any other should preserve colouring_satisfactory? *)
-cheat)
+THEN METIS_TAC [naive_colouring_satisfactory_with_unused_value])
 
 
 val naive_colouring_aux_satisfactory_implication = prove(``
@@ -238,6 +248,13 @@ REPEAT STRIP_TAC THEN
 Cases_on `cs` THEN1 EVAL_TAC THEN
 Cases_on `h` THEN
 FULL_SIMP_TAC bool_ss [naive_colouring_def])
+
+val naive_colouring_satisfactory = prove(``
+!(cs:(num # num list) list) .
+	  colouring_satisfactory (naive_colouring cs) cs
+``,
+METIS_TAC [naive_colouring_aux_satisfactory,
+	  naive_colouring_aux_satisfactory_implication])
 
 
 val test = EVAL ``let cs = [(1, [2; 3]); (2, [1]); (3, [1])] in
