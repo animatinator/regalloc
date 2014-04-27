@@ -329,3 +329,12 @@ FULL_SIMP_TAC bool_ss [heuristic_sort_def] THEN
 `set (h::list) = {h} UNION set (list)`
      by METIS_TAC [LIST_TO_SET, INSERT_SING_UNION] THEN
 METIS_TAC [])
+
+
+val highest_degree_def = Define `
+    (highest_degree (_, []) = 0) /\
+    (highest_degree (r, (x::xs)) = (get_degree (r, xs)) + 1)
+`
+
+val highest_degree_correctness = prove(``heuristic_ok highest_degree``,
+    METIS_TAC [all_heuristic_sorts_ok])
