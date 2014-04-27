@@ -143,20 +143,47 @@ METIS_TAC [function_irrelevant_update, naive_colouring_aux_def])
 
 
 
+(* naive_colouring_aux starting from a register n+1 is always either equal
+to naive_colouring_aux from register n or one greater than it *)
+val naive_colouring_aux_equality = prove(``
+! cs n x .
+((naive_colouring_aux cs (n + 1) x) = (naive_colouring_aux cs n x))
+\/
+((naive_colouring_aux cs (n + 1) x) = ((naive_colouring_aux cs n x) + 1))
+``,
+Induct_on `cs` THEN1 (EVAL_TAC THEN DECIDE_TAC) THEN
+Cases_on `h` THEN
+EVAL_TAC THEN
+Cases_on `q = x` THEN1 (FULL_SIMP_TAC bool_ss []) THEN
+FULL_SIMP_TAC bool_ss [])
+
+val naive_colouring_colours_greater_than_n = prove(``
+! (cs:(num # num) list) (n:num) (x:num) .
+(naive_colouring_aux cs (n+1) x) > n
+``,
+Induct_on `cs` THEN1 (REPEAT STRIP_TAC THEN EVAL_TAC THEN DECIDE_TAC) THEN
+REPEAT STRIP_TAC THEN
+Cases_on `h` THEN
+EVAL_TAC THEN
+Cases_on `q = x` THEN1 (FULL_SIMP_TAC bool_ss [] THEN DECIDE_TAC) THEN
+FULL_SIMP_TAC bool_ss [] THEN
+`naive_colouring_aux cs (n + 1) x > n` by METIS_TAC [] THEN
+`(naive_colouring_aux cs (n + 1 + 1) x = naive_colouring_aux cs (n + 1) x)
+\/
+(naive_colouring_aux cs (n + 1 + 1) x = (naive_colouring_aux cs (n + 1) x) + 1)`
+by METIS_TAC [naive_colouring_aux_equality] THEN1 (METIS_TAC []) THEN
+`naive_colouring_aux cs (n + 1) x + 1 > n` by FULL_SIMP_TAC arith_ss [] THEN
+METIS_TAC [])
+
 (* This goal seems like the crux of the next goal *)
 val naive_colouring_colours_all_new = prove(``
 ! (cs:(num # num) list) (n:num) (x:num) .
 (naive_colouring_aux cs (n+1)) (x) <> n
 ``,
-Induct_on `cs` THEN1 (EVAL_TAC THEN DECIDE_TAC) THEN
-Cases_on `h` THEN
-EVAL_TAC THEN
-Cases_on `q = x` THEN1 (STRIP_TAC THEN EVAL_TAC THEN DECIDE_TAC) THEN
-STRIP_TAC THEN
-EVAL_TAC THEN
-Q.PAT_ASSUM `! n x . naive_colouring_aux cs (n + 1) x <> n` (ASSUME_TAC o
-Q.SPECL [`n+1`,`x`]) THEN
-cheat) (* TODO *)
+REPEAT STRIP_TAC THEN
+`naive_colouring_aux cs (n + 1) x > n`
+by METIS_TAC [naive_colouring_colours_greater_than_n] THEN
+DECIDE_TAC)
 
 (* This next goal is the main missing part of the proof:
 ``
