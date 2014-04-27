@@ -196,12 +196,12 @@ val naive_colouring_satisfactory_with_unused_value = prove(``
 ``,
 Induct_on `cs` THEN1 (EVAL_TAC THEN DECIDE_TAC) THEN
 REPEAT STRIP_TAC THEN
-Cases_on `h`
-`colouring_satisfactory (naive_colouring_aux ((q', r)::cs) (n + 1)) cs` by METIS_TAC [colouring_satisfactory_def]
-`colouring_satisfactory (naive_colouring_aux cs (n + 1)) cs` by cheat
-`colouring_satisfactory ((q =+ n) (naive_colouring_aux cs (n + 1))) cs` by METIS_TAC []
-FULL_SIMP_TAC bool_ss [naive_colouring_aux_def]
-FULL_SIMP_TAC bool_ss [colouring_satisfactory_def]
+Cases_on `h` THEN
+`colouring_satisfactory (naive_colouring_aux ((q', r)::cs) (n + 1)) cs` by METIS_TAC [colouring_satisfactory_def] THEN
+`colouring_satisfactory (naive_colouring_aux cs (n + 1)) cs` by cheat THEN
+`colouring_satisfactory ((q =+ n) (naive_colouring_aux cs (n + 1))) cs` by METIS_TAC [] THEN
+FULL_SIMP_TAC bool_ss [naive_colouring_aux_def] THEN
+FULL_SIMP_TAC bool_ss [colouring_satisfactory_def] THEN
 cheat)
 
 
@@ -261,8 +261,71 @@ val test = EVAL ``let cs = [(1, [2; 3]); (2, [1]); (3, [1])] in
 colouring_satisfactory (naive_colouring cs) cs``
 
 
-(* Determines whether a heuristic is acceptable
+
+(* Determines whether a heuristic is acceptable *)
 (*An acceptable heuristic only re-orders the input constraints *)
+val heuristic_application_ok_def = Define `
+    (heuristic_application_ok f = ! list . set (f list) = set (list))
+`
+
+val heuristic_insert_def = Define `
+    (heuristic_insert f x [] = [x]) /\
+    (heuristic_insert f x (y::ys) = if (f x > f y) then x::y::ys
+    		      else y::(heuristic_insert f x ys))
+`
+
+val heuristic_sort_def = Define	`
+    (heuristic_sort (f:(num # num list)->num) [] = []) /\
+    (heuristic_sort f (x::xs) = (heuristic_insert f x (heuristic_sort f xs)))
+`
+
 val heuristic_ok_def = Define `
-    (heuristic_ok f 
-`*)
+    (heuristic_ok (f:(num # num list)->num) =
+    ! (list:(num # num list) list) . set (heuristic_sort f list) = set (list))
+`
+
+val insert_adds_correctly = prove(``
+! f x ys . MEM x (heuristic_insert f x ys)
+``,
+Induct_on `ys` THEN1 (EVAL_TAC THEN DECIDE_TAC) THEN
+EVAL_TAC THEN
+Cases_on `f x > f h` THEN1 (FULL_SIMP_TAC bool_ss [] THEN EVAL_TAC) THEN
+FULL_SIMP_TAC bool_ss [] THEN
+`MEM x (heuristic_insert f x ys)` by METIS_TAC [] THEN
+EVAL_TAC THEN METIS_TAC [])
+
+
+val set_after_heuristic_insert = prove(``
+! f h list .
+set (heuristic_insert f h list) = {h} UNION (set list)
+``,
+Induct_on `list` THEN1 (EVAL_TAC THEN
+	  METIS_TAC [LIST_TO_SET, SUBSET_REFL, EMPTY_SUBSET]) THEN
+REPEAT STRIP_TAC THEN
+FULL_SIMP_TAC bool_ss [heuristic_insert_def] THEN
+Cases_on `f h' > f h` THEN1 (
+	 FULL_SIMP_TAC bool_ss [] THEN
+	 METIS_TAC [LIST_TO_SET, INSERT_SING_UNION]) THEN
+FULL_SIMP_TAC bool_ss [] THEN
+`set (heuristic_insert f h' list) = ({h'} UNION (set list))`
+     by METIS_TAC [] THEN
+FULL_SIMP_TAC bool_ss [LIST_TO_SET] THEN
+`{h'} UNION (h INSERT set list) = h INSERT ({h'} UNION set list)`
+by METIS_TAC [INSERT_SING_UNION, UNION_EMPTY, UNION_ASSOC, UNION_COMM] THEN
+METIS_TAC [])
+
+
+val all_heuristic_sorts_ok = prove(``
+! (f:(num # num list)->num) . heuristic_ok f
+``,
+FULL_SIMP_TAC std_ss [heuristic_ok_def] THEN
+Induct_on `list` THEN1 (EVAL_TAC THEN DECIDE_TAC) THEN
+REPEAT STRIP_TAC THEN
+FULL_SIMP_TAC bool_ss [heuristic_sort_def] THEN
+`set (heuristic_sort f list) = set list` by METIS_TAC [] THEN
+`set (heuristic_insert f h (heuristic_sort f list)) =
+     {h} UNION (set (heuristic_sort f list))`
+     by METIS_TAC [set_after_heuristic_insert] THEN
+`set (h::list) = {h} UNION set (list)`
+     by METIS_TAC [LIST_TO_SET, INSERT_SING_UNION] THEN
+METIS_TAC [])
