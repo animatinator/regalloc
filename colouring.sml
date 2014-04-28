@@ -25,7 +25,8 @@ val no_duplicate_vertices_def = Define `
 
 (* Vertex is not linked to itself *)
 val edge_list_well_formed_def = Define `
-    (edge_list_well_formed (v, [edges]) = ~(MEM v edges))
+    (edge_list_well_formed ((v:num), (edges:num list)) = ~(MEM v edges)
+    			   /\ duplicate_free edges)
 `
 
 (* Vertices in graph are not linked to themselves *)
@@ -41,35 +42,6 @@ val colouring_satisfactory_def = Define `
     (colouring_satisfactory col ((r, rs)::cs) = ~(MEM (col r) (MAP col rs))
     			    /\ (colouring_satisfactory col cs))
 `
-
-(* Simplified version of colouring satisfying constraints:
-Colouring satisfies top constraint *)
-val colouring_satisfactory_top_def = Define `
-    (colouring_satisfactory col [] = T) /\
-    (colouring_satisfactory col ((r, rs)::cs) = ~(MEM (col r) (MAP col rs)))
-`
-
-
-``
-! col r rs cs n .
-colouring_satisfactory ((r =+ n)col) cs /\
-(! x . col x <> n)
-==>
-colouring_satisfactory col cs
-``
-Induct_on `cs`
-REPEAT STRIP_TAC THEN EVAL_TAC
-REPEAT STRIP_TAC
-Cases_on `h`
-FULL_SIMP_TAC std_ss [colouring_satisfactory_def]
-`colouring_satisfactory col cs` by METIS_TAC []
-FULL_SIMP_TAC bool_ss []
-
-Cases_on `q = r`
-cheat
-`(r =+ n) col q = col q` by EVAL_TAC THEN FULL_SIMP_TAC bool_ss []
-FULL_SIMP_TAC std_ss []
-cheat
 
 
 (* Identity colouring *)
@@ -175,7 +147,7 @@ by METIS_TAC [naive_colouring_aux_equality] THEN1 (METIS_TAC []) THEN
 `naive_colouring_aux cs (n + 1) x + 1 > n` by FULL_SIMP_TAC arith_ss [] THEN
 METIS_TAC [])
 
-(* This goal seems like the crux of the next goal *)
+(* naive_colouring_aux starting from n+1 does not assign n *)
 val naive_colouring_colours_all_new = prove(``
 ! (cs:(num # num list) list) (n:num) (x:num) .
 (naive_colouring_aux cs (n+1)) (x) <> n
@@ -187,23 +159,108 @@ DECIDE_TAC)
 
 
 
-(* This next goal is the main missing part of the proof: *)
-val naive_colouring_satisfactory_with_unused_value = prove(``
-! n cs q.
-(colouring_satisfactory (naive_colouring_aux cs (n+1)) cs)
+(* If a function is never equal to n, updating it so one value is mapped to
+n does not make any other values map to n *)
+val apply_update_only_changes_updated_value = prove(``
+! f n w .
+(! x . f x <> n) ==> (! x . (x <> w) ==> (((w =+ n) f) x <> n))
+``,
+REPEAT STRIP_TAC THEN
+Cases_on `x = w` THEN1 (FULL_SIMP_TAC std_ss []) THEN
+`f x <> n` by METIS_TAC [] THEN
+METIS_TAC [APPLY_UPDATE_THM])
+
+(* If only one value 'x' maps to a particular output value 'n', mapping the
+function over a list which does not contain x will give a list not containing
+n *)
+val map_output_only_contains_values_mapped_from_inputs = prove(``
+! x list f n .
+~(MEM x list) /\ (! y . (y <> x) ==> (f y <> n))
 ==>
-(colouring_satisfactory ((q =+ n) (naive_colouring_aux cs (n+1))) cs)
+~(MEM n (MAP f list))
+``,
+Induct_on `list` THEN1 (EVAL_TAC THEN DECIDE_TAC) THEN
+REPEAT STRIP_TAC THEN
+`~(MEM x list)` by METIS_TAC [MEM] THEN
+`~(MEM n (MAP f list))` by METIS_TAC [] THEN
+FULL_SIMP_TAC bool_ss [MEM, MAP] THEN
+METIS_TAC [])
+
+
+
+val input_unaffected_by_unrelated_update = prove(``
+(((q =+ n) f) h <> (f h))
+==> (h = q)
+``,
+REPEAT STRIP_TAC THEN
+Cases_on `h = q` THEN1 FULL_SIMP_TAC bool_ss [] THEN
+`((q =+ n) f) h = f h` by EVAL_TAC THEN
+FULL_SIMP_TAC bool_ss [])
+
+val output_cannot_exist_without_being_mapped_to = prove(``
+! f x list n q .
+(~(MEM (f x) (MAP f list)) /\ (f x <> n))
+==> ~(MEM (f x) (MAP ((q =+ n) f) list))
+``,
+Induct_on `list` THEN1 (EVAL_TAC THEN DECIDE_TAC) THEN
+REPEAT STRIP_TAC THEN
+`~(MEM (f x) (MAP f list))` by METIS_TAC [MAP, MEM] THEN
+`~(MEM (f x) (MAP ((q =+ n) f) list))` by METIS_TAC [] THEN
+FULL_SIMP_TAC bool_ss [MAP, MEM] THEN
+`h = q` by METIS_TAC [input_unaffected_by_unrelated_update] THEN
+`(q =+ n) f h = n` by EVAL_TAC THEN
+METIS_TAC [])
+
+
+(* Updating a satisfactory colouring with a value unused by any register
+yields another satisfactory colouring *)
+val colouring_satisfactory_after_update = prove(``
+! (c:num->num) (cs:(num # num list) list) (q:num) (n:num) .
+  (graph_edge_lists_well_formed cs) /\
+  colouring_satisfactory c cs /\ (! x . c x <> n)
+  ==> colouring_satisfactory ((q =+ n) c) cs
 ``,
 Induct_on `cs` THEN1 (EVAL_TAC THEN DECIDE_TAC) THEN
 REPEAT STRIP_TAC THEN
 Cases_on `h` THEN
-`colouring_satisfactory (naive_colouring_aux ((q', r)::cs) (n + 1)) cs` by METIS_TAC [colouring_satisfactory_def] THEN
-`colouring_satisfactory (naive_colouring_aux cs (n + 1)) cs` by cheat THEN
-`colouring_satisfactory ((q =+ n) (naive_colouring_aux cs (n + 1))) cs` by METIS_TAC [] THEN
-FULL_SIMP_TAC bool_ss [naive_colouring_aux_def] THEN
-FULL_SIMP_TAC bool_ss [colouring_satisfactory_def] THEN
-cheat)
+EVAL_TAC THEN
+Cases_on `q = q'` THEN1 (
+	 FULL_SIMP_TAC bool_ss [] THEN
+	 `~(MEM q' r)` by FULL_SIMP_TAC bool_ss
+	 	[graph_edge_lists_well_formed_def,
+		edge_list_well_formed_def] THEN
+	 `graph_edge_lists_well_formed cs`
+	 	 by METIS_TAC [graph_edge_lists_well_formed_def] THEN
+	 `colouring_satisfactory c cs`
+	 	 by METIS_TAC [colouring_satisfactory_def] THEN
+	 `colouring_satisfactory ((q' =+ n) c) cs` by METIS_TAC [] THEN
+	 METIS_TAC [map_output_only_contains_values_mapped_from_inputs,
+	 	   apply_update_only_changes_updated_value]) THEN
+FULL_SIMP_TAC bool_ss [] THEN
+`~(MEM q' r)` by FULL_SIMP_TAC bool_ss [graph_edge_lists_well_formed_def,
+        edge_list_well_formed_def] THEN
+`graph_edge_lists_well_formed cs`
+        by METIS_TAC [graph_edge_lists_well_formed_def] THEN
+`colouring_satisfactory c cs`
+        by METIS_TAC [colouring_satisfactory_def] THEN
+`colouring_satisfactory ((q' =+ n) c) cs` by METIS_TAC [] THEN
+`~(MEM (c q') (MAP c r))` by METIS_TAC [colouring_satisfactory_def] THEN
+`c q' <> n` by METIS_TAC [] THEN
+METIS_TAC [output_cannot_exist_without_being_mapped_to])
 
+(* A naive colouring is still satisfactory if it is updated with a value
+unused by any register *)
+val naive_colouring_satisfactory_with_unused_value = prove(``
+! n cs q.
+graph_edge_lists_well_formed cs /\
+(colouring_satisfactory (naive_colouring_aux cs (n+1)) cs)
+==>
+(colouring_satisfactory ((q =+ n) (naive_colouring_aux cs (n+1))) cs)
+``,
+REPEAT STRIP_TAC THEN
+`! x . naive_colouring_aux cs (n + 1) x <> n`
+   by METIS_TAC [naive_colouring_colours_all_new] THEN
+METIS_TAC [colouring_satisfactory_after_update])
 
 
 val map_doesnt_contain_unused_values = prove(``
@@ -217,18 +274,22 @@ FULL_SIMP_TAC std_ss [MAP, MEM] THEN
 METIS_TAC [])
 
 val naive_colouring_aux_satisfactory = prove(``
-!(cs:(num # num list) list) (n:num) . colouring_satisfactory (naive_colouring_aux cs n) cs
+!(cs:(num # num list) list) .
+graph_edge_lists_well_formed cs ==>
+(! n . colouring_satisfactory (naive_colouring_aux cs n) cs)
 ``,
 Induct_on `cs` THEN1 (EVAL_TAC THEN DECIDE_TAC) THEN
 Cases_on `h` THEN
 EVAL_TAC THEN
+STRIP_TAC THEN
 STRIP_TAC THEN
 STRIP_TAC THEN1 (
 	  `colouring_satisfactory (naive_colouring_aux cs (n + 1)) cs`
 	  by METIS_TAC [] THEN
 	  (* now use the fact that the edge list is well-formed - need to add
 	  this fact to the overall goal's assumptions *)
-	  `~(MEM q r)` by cheat THEN
+	  `~(MEM q r)` by METIS_TAC [graph_edge_lists_well_formed_def,
+	  	 edge_list_well_formed_def] THEN
 	  `!x . (naive_colouring_aux cs (n + 1)) x <> n`
 	  by METIS_TAC [naive_colouring_colours_all_new] THEN
 	  FULL_SIMP_TAC std_ss [colouring_map_with_unused_update] THEN
@@ -239,10 +300,10 @@ THEN METIS_TAC [naive_colouring_satisfactory_with_unused_value])
 
 
 val naive_colouring_aux_satisfactory_implication = prove(``
-(!(cs:('a # 'a list) list) n . colouring_satisfactory
+! (cs : (num # num list) list) .
+(! (n:num) . colouring_satisfactory
     (naive_colouring_aux cs n) cs)
-==> (!(cs:('a # 'a list) list) n . colouring_satisfactory
-    (naive_colouring cs) cs)
+==> (colouring_satisfactory (naive_colouring cs) cs)
 ``,
 REPEAT STRIP_TAC THEN
 Cases_on `cs` THEN1 EVAL_TAC THEN
@@ -251,6 +312,7 @@ FULL_SIMP_TAC bool_ss [naive_colouring_def])
 
 val naive_colouring_satisfactory = prove(``
 !(cs:(num # num list) list) .
+	  graph_edge_lists_well_formed cs ==>
 	  colouring_satisfactory (naive_colouring cs) cs
 ``,
 METIS_TAC [naive_colouring_aux_satisfactory,
