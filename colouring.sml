@@ -61,28 +61,6 @@ val naive_colouring_def = Define `
     (naive_colouring constraints = naive_colouring_aux constraints 0)
 `
 
-(* Lowest-first colouring:
-Take the supplied constraints in order, and assign to each register the
-lowest colour which doesn't conflict *)
-(* Doesn't work just now as smallest_nonmember can't be proven total *)
-
-(*val smallest_nonmember_def = Define `
-    (smallest_nonmember list x = if ~(MEM x list) then x
-    			else (smallest_nonmember list (x+1)))
-`
-
-val lowest_available_colour_def = Define `
-    (lowest_available_colour col cs = smallest_satisfying
-        (\x . ~MEM x (MAP col cs)) 0)
-`
-
-val lowest_first_colouring_def = Define `
-    (lowest_first_colouring [] = \x.0) /\
-    (lowest_first_colouring ((r, rs)::cs) =
-        let col = (lowest_first_colouring cs) in
-	let lowest_available = (lowest_available_colour col rs)
-`*)
-
 
 val naive_colouring_step = prove(``
 (naive_colouring_aux ((q,r)::cs) n) = (q=+n) (naive_colouring_aux cs (n + 1))
@@ -400,3 +378,46 @@ val highest_degree_def = Define `
 
 val highest_degree_correctness = prove(``heuristic_ok highest_degree``,
     METIS_TAC [all_heuristic_sorts_ok])
+
+
+
+(* Lowest-first colouring:
+Take the supplied constraints in order, and assign to each register the
+lowest colour which doesn't conflict *)
+
+(* Inserts a colour into an ordered list of colours *)
+val insert_colour_def = Define `
+    (insert_colour c [] = [c]) /\
+    (insert_colour c (x::xs) = if (c < x) then c::x::xs
+    		   else x::(insert_colour c xs))
+`
+
+(* Sorts a list of colours into numerical order *)
+val sort_colours_def = Define `
+    (sort_colours [] = []) /\
+    (sort_colours (x::xs) = insert_colour x (sort_colours xs))
+`
+
+(* Finds the smallest value which is not a member of a sorted list *)
+val smallest_nonmember_sorted_def = Define `
+    (smallest_nonmember_sorted [] = 0) /\
+    (smallest_nonmember_sorted [a] = a + 1) /\
+    (smallest_nonmember_sorted (a::b::tail) = if ((a + 1) <> b) then (a + 1)
+    			       else smallest_nonmember_sorted (b::tail))
+`
+
+(* Finds the lowest available colour given a colouring and a set of clashing
+registers *)
+val lowest_available_colour_def = Define `
+    (lowest_available_colour (col:num->num) cs = smallest_nonmember_sorted
+    			     (sort_colours (MAP col cs)))
+`
+
+(* Computes a lowest-first colouring for the supplied graph *)
+val lowest_first_colouring_def = Define `
+    (lowest_first_colouring [] = \x.0) /\
+    (lowest_first_colouring ((r, rs)::cs) =
+        let (col:num->num) = (lowest_first_colouring cs) in
+	let lowest_available = (lowest_available_colour col rs) in
+	(r =+ lowest_available) col)
+`
