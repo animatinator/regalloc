@@ -430,9 +430,9 @@ val smallest_nonmember_is_not_member = prove(``
 ``,
 recInduct smallest_nonmember_ind THEN
 REPEAT STRIP_TAC THEN
-Cases_on `list` THEN1 (FULL_SIMP_TAC bool_ss [MEM, smallest_nonmember_def])
-(* Not sure how to continue from here *)
-THEN cheat)
+Cases_on `MEM x list` THEN
+METIS_TAC [smallest_nonmember_def] THEN
+METIS_TAC [smallest_nonmember_def])
 
 
 (* Finds the lowest available colour given a colouring and a set of clashing
@@ -484,6 +484,9 @@ FULL_SIMP_TAC bool_ss [] THEN
 cheat)
 
 
+(* TODO try doing this the other way around: prove the two requirements for
+new_colour_satisfactory_if_constraints_satisfied and then just use that lemma
+rather than breaking down the goal and losing (r, rs) as is happening below *)
 val lowest_first_colouring_satisfactory = prove(``
 ! cs .
   graph_edge_lists_well_formed cs ==>
