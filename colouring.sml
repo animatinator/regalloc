@@ -474,6 +474,7 @@ What I'm trying to do with this lemma is show that if the first goal holds of
 I'm not sure how to formalise this).
 *)
 val new_colour_satisfactory_if_constraints_satisfied = prove(``
+! (n:num) (r:num) (col:num->num) (rs:num list) (cs: (num # num list) list) .
 (~(MEM n (MAP ((r =+ n) col) rs)) /\ (colouring_satisfactory col cs))
 ==>
 (colouring_satisfactory ((r =+ n)col) ((r, rs)::cs))
@@ -484,9 +485,6 @@ FULL_SIMP_TAC bool_ss [] THEN
 cheat)
 
 
-(* TODO try doing this the other way around: prove the two requirements for
-new_colour_satisfactory_if_constraints_satisfied and then just use that lemma
-rather than breaking down the goal and losing (r, rs) as is happening below *)
 val lowest_first_colouring_satisfactory = prove(``
 ! cs .
   graph_edge_lists_well_formed cs ==>
@@ -495,14 +493,17 @@ val lowest_first_colouring_satisfactory = prove(``
 Induct_on `cs` THEN1 (EVAL_TAC THEN DECIDE_TAC) THEN
 REPEAT STRIP_TAC THEN
 Cases_on `h` THEN
-FULL_SIMP_TAC std_ss [colouring_satisfactory_def,
-	      lowest_first_colouring_def] THEN
-FULL_SIMP_TAC bool_ss [LET_DEF] THEN
-REPEAT STRIP_TAC THEN1(
-       FULL_SIMP_TAC bool_ss [APPLY_UPDATE_THM] THEN
-       `~(MEM q r)` by METIS_TAC [graph_edge_lists_well_formed_def,
-       	      edge_list_well_formed_def] THEN
-	      METIS_TAC [function_irrelevant_update,
-	      		lowest_available_colour_is_valid]
-       ) THEN
-cheat)
+`graph_edge_lists_well_formed cs`
+        by METIS_TAC [graph_edge_lists_well_formed_def] THEN
+`colouring_satisfactory (lowest_first_colouring cs) cs` by METIS_TAC [] THEN
+REVERSE (`~(MEM (lowest_available_colour (lowest_first_colouring cs) r)
+       (MAP ((q =+ lowest_available_colour (lowest_first_colouring cs) r)
+       (lowest_first_colouring cs)) r))` by ALL_TAC) THEN1 (
+       FULL_SIMP_TAC std_ss [lowest_first_colouring_def] THEN
+       FULL_SIMP_TAC bool_ss [LET_DEF] THEN
+       METIS_TAC [new_colour_satisfactory_if_constraints_satisfied]) THEN
+REPEAT STRIP_TAC THEN
+FULL_SIMP_TAC bool_ss [APPLY_UPDATE_THM] THEN
+`~(MEM q r)` by METIS_TAC [graph_edge_lists_well_formed_def,
+       edge_list_well_formed_def] THEN
+METIS_TAC [function_irrelevant_update, lowest_available_colour_is_valid])
