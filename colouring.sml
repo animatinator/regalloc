@@ -5,6 +5,8 @@ open arithmeticTheory listTheory combinTheory pairTheory
 
 open three_addrTheory;
 
+val _ = new_theory "colouring";
+
 
 (* Get list of vertices from a graph *)
 val get_vertices_def = Define `
@@ -385,33 +387,66 @@ val highest_degree_correctness = prove(``heuristic_ok highest_degree``,
 Take the supplied constraints in order, and assign to each register the
 lowest colour which doesn't conflict *)
 
-(* Inserts a colour into an ordered list of colours *)
-val insert_colour_def = Define `
-    (insert_colour c [] = [c]) /\
-    (insert_colour c (x::xs) = if (c < x) then c::x::xs
-    		   else x::(insert_colour c xs))
+(* Maximum of a list *)
+val list_max = Define `
+    (list_max [] = 0) /\
+    (list_max (x::xs) = let tail = list_max xs in
+    (if x > tail then x else tail))
 `
 
-(* Sorts a list of colours into numerical order *)
-val sort_colours_def = Define `
-    (sort_colours [] = []) /\
-    (sort_colours (x::xs) = insert_colour x (sort_colours xs))
-`
+val list_max_is_largest = prove(``
+    ! x list . MEM x list ==> (x <= list_max list)
+``,
+Induct_on `list` THEN1 (EVAL_TAC THEN DECIDE_TAC) THEN
+REPEAT STRIP_TAC THEN
+EVAL_TAC THEN
+Cases_on `h > list_max list` THEN1(
+        FULL_SIMP_TAC bool_ss [] THEN
+        Cases_on `x = h` THEN1 (FULL_SIMP_TAC arith_ss [MEM]) THEN
+		FULL_SIMP_TAC arith_ss [MEM] THEN
+		`x <= list_max list` by METIS_TAC [] THEN
+		FULL_SIMP_TAC arith_ss []
+        ) THEN
+FULL_SIMP_TAC arith_ss [] THEN
+Cases_on `x = h` THEN1 (FULL_SIMP_TAC arith_ss [MEM]) THEN
+FULL_SIMP_TAC arith_ss [MEM])
 
-(* Finds the smallest value which is not a member of a sorted list *)
-val smallest_nonmember_sorted_def = Define `
-    (smallest_nonmember_sorted [] = 0) /\
-    (smallest_nonmember_sorted [a] = a + 1) /\
-    (smallest_nonmember_sorted (a::b::tail) = if ((a + 1) <> b) then (a + 1)
-    			       else smallest_nonmember_sorted (b::tail))
-`
+(* Find the smallest value which is not a member of a list *)
+val smallest_nonmember_def = tDefine "smallest_nonmember" `
+    (smallest_nonmember x list = if (MEM x list)
+    			then smallest_nonmember (x + 1) list
+			else x)
+` (WF_REL_TAC ` measure (\(x, ys) . ((list_max ys) + 1) - x)` THEN
+REPEAT STRIP_TAC THEN
+FULL_SIMP_TAC arith_ss [] THEN
+`x <= list_max list` by METIS_TAC [list_max_is_largest] THEN
+FULL_SIMP_TAC arith_ss [])
+
+val smallest_nonmember_ind = DB.fetch "-" "smallest_nonmember_ind";
+
+
+val smallest_nonmember_is_not_member = prove(``
+! n list . ~(MEM (smallest_nonmember n list) list)
+``,
+recInduct smallest_nonmember_ind THEN
+REPEAT STRIP_TAC THEN
+Cases_on `list` THEN1 (FULL_SIMP_TAC bool_ss [MEM, smallest_nonmember_def])
+(* Not sure how to continue from here *)
+THEN cheat)
+
 
 (* Finds the lowest available colour given a colouring and a set of clashing
 registers *)
 val lowest_available_colour_def = Define `
-    (lowest_available_colour (col:num->num) cs = smallest_nonmember_sorted
-    			     (sort_colours (MAP col cs)))
+    (lowest_available_colour (col:num->num) cs =
+    			     smallest_nonmember 0 (MAP col cs))
 `
+val lowest_available_colour_is_valid = prove(``
+! col cs . ~(MEM (lowest_available_colour col cs) (MAP col cs))
+``,
+FULL_SIMP_TAC bool_ss [lowest_available_colour_def] THEN
+METIS_TAC [smallest_nonmember_is_not_member])
+
 
 (* Computes a lowest-first colouring for the supplied graph *)
 val lowest_first_colouring_def = Define `
@@ -421,3 +456,50 @@ val lowest_first_colouring_def = Define `
 	let lowest_available = (lowest_available_colour col rs) in
 	(r =+ lowest_available) col)
 `
+
+
+(* Possible lemma for proving lowest-first correctness - not sure how to prove
+it.
+The problem is that (colouring_satisfactory col ((r,rs)::cs)) consists of
+two goals:
+    ~(MEM (col r) (MAP col rs))
+    colouring_satisfactory col cs
+
+The first is usually quite straightforward to prove, but the second is trickier
+because the colouring 'col' is usually of the form ((q =+ n) col), but the
+induction hypothesis only gives colouring_satisfactory col cs.
+What I'm trying to do with this lemma is show that if the first goal holds of
+((q =+ n) col), then the update (q =+ n) will be fine for the remainder of cs
+(as intuitively (r, rs) should capture all the registers r clashes with, but
+I'm not sure how to formalise this).
+*)
+val new_colour_satisfactory_if_constraints_satisfied = prove(``
+(~(MEM n (MAP ((r =+ n) col) rs)) /\ (colouring_satisfactory col cs))
+==>
+(colouring_satisfactory ((r =+ n)col) ((r, rs)::cs))
+``,
+REPEAT STRIP_TAC THEN
+EVAL_TAC THEN
+FULL_SIMP_TAC bool_ss [] THEN
+cheat)
+
+
+val lowest_first_colouring_satisfactory = prove(``
+! cs .
+  graph_edge_lists_well_formed cs ==>
+  colouring_satisfactory (lowest_first_colouring cs) cs
+``,
+Induct_on `cs` THEN1 (EVAL_TAC THEN DECIDE_TAC) THEN
+REPEAT STRIP_TAC THEN
+Cases_on `h` THEN
+FULL_SIMP_TAC std_ss [colouring_satisfactory_def,
+	      lowest_first_colouring_def] THEN
+FULL_SIMP_TAC bool_ss [LET_DEF] THEN
+REPEAT STRIP_TAC THEN1(
+       FULL_SIMP_TAC bool_ss [APPLY_UPDATE_THM] THEN
+       `~(MEM q r)` by METIS_TAC [graph_edge_lists_well_formed_def,
+       	      edge_list_well_formed_def] THEN
+	      METIS_TAC [function_irrelevant_update,
+	      		lowest_available_colour_is_valid]
+       ) THEN
+cheat)
