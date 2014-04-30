@@ -211,6 +211,50 @@ val get_conflicts_def = Define `
 val test_conflicts = EVAL ``get_conflicts [Inst 1 2 3; Inst 0 1 2] [0]``
 
 
+(* Proving properties of get_conflicts and related functions *)
+
+(* The list of conflicts for a register is duplicate_free *)
+val conflicts_for_register_duplicate_free = prove(``
+! code live r . (duplicate_free live)
+  ==> duplicate_free (conflicts_for_register r code live)
+``,
+Induct_on `code` THEN
+EVAL_TAC THEN
+cheat) (* TODO finish *)
+
+(* The list of all registers is duplicate_free *)
+val get_registers_duplicate_free = prove(``
+! code live . (duplicate_free live)
+  ==> duplicate_free (get_registers code live)
+``,
+Induct_on `code` THEN1 (EVAL_TAC THEN DECIDE_TAC) THEN
+REPEAT STRIP_TAC THEN
+`duplicate_free (get_registers code live)` by METIS_TAC [] THEN
+Cases_on `h` THEN
+FULL_SIMP_TAC bool_ss [get_registers_def] THEN
+METIS_TAC [duplicate_free_insertion])
+
+(* X is not a member of a list which has all things equal to it filtered out *)
+val member_of_filtered_list = prove(``
+    ! x list . ~(MEM x (FILTER (\ y . x <> y) list))
+``,
+Induct_on `list` THEN1 (EVAL_TAC THEN DECIDE_TAC) THEN
+REPEAT STRIP_TAC THEN
+FULL_SIMP_TAC bool_ss [FILTER] THEN
+Cases_on `x = h` THEN1 METIS_TAC [] THEN
+FULL_SIMP_TAC bool_ss [MEM] THEN
+METIS_TAC [])
+
+(* A register does not feature in the list of registers conflicting with it *)
+val register_does_not_conflict_with_self = prove(``
+    ! r code live .
+    ~(MEM r (conflicts_for_register r code live))
+``,
+FULL_SIMP_TAC std_ss [conflicts_for_register_def] THEN
+EVAL_TAC THEN
+METIS_TAC [member_of_filtered_list])
+
+
 
 val mem_after_map = prove(``! x xs (c:num->num) .
     MEM x xs ==> MEM (c x) (MAP c xs)``,

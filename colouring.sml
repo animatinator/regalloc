@@ -38,6 +38,31 @@ val graph_edge_lists_well_formed_def = Define `
     				  /\ graph_edge_lists_well_formed es)
 `
 
+(* Proving that graphs generated in three_addrScript have the necessary
+properties *)
+val generated_edge_lists_well_formed = prove(``
+! r code live . duplicate_free live ==>
+edge_list_well_formed (r, conflicts_for_register r code live)
+``,
+FULL_SIMP_TAC std_ss [edge_list_well_formed_def] THEN
+REPEAT STRIP_TAC THEN1 METIS_TAC [register_does_not_conflict_with_self] THEN
+METIS_TAC [conflicts_for_register_duplicate_free])
+
+
+(* TODO: This next proof. Essentially want to show that as edge_list_well_formed
+holds for each edge list created, mapping the function
+\r . (reg, conflicts_for_register reg code live)
+over any set of registers yields a list of edge lists which satisfies
+graph_edge_lists_well_formed. Not entirely sure how to express this yet,
+though *)
+(*``
+! code live . graph_edge_lists_well_formed (get_conflicts code live)
+``
+Induct_on `code`
+FULL_SIMP_TAC std_ss [get_conflicts_def]*)
+
+
+
 (* Colouring satisfies constraints *)
 val colouring_satisfactory_def = Define `
     (colouring_satisfactory col [] = T) /\
