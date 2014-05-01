@@ -229,6 +229,7 @@ FULL_SIMP_TAC bool_ss [] THEN
 `duplicate_free (list_union xs ys)` by METIS_TAC [] THEN
 FULL_SIMP_TAC bool_ss [duplicate_free_def])
 
+(* list_union_flatten preserves duplicate freeness *)
 val list_union_flatten_duplicate_free = prove(``
 ! lists .
 EVERY (\list . duplicate_free list) lists
@@ -241,6 +242,7 @@ FULL_SIMP_TAC bool_ss [EVERY_DEF] THEN
 `duplicate_free (list_union_flatten lists)` by METIS_TAC [] THEN
 METIS_TAC [list_union_duplicate_free])
 
+(* conflicting_sets generates duplicate-free sets *)
 val conflicting_sets_duplicate_free = prove(``
 ! code live . duplicate_free live
   ==> EVERY (\list . duplicate_free list) (conflicting_sets code live)
@@ -253,6 +255,7 @@ FULL_SIMP_TAC bool_ss [conflicting_sets_def, get_live_def, EVERY_DEF] THEN
         by METIS_TAC [get_live_has_no_duplicates] THEN
 METIS_TAC [duplicate_free_insertion, duplicate_free_deletion])
 
+(* If 'EVERY P list' holds, then it also holds after the list is filtered *)
 val every_filter_implication = prove(``
 ! P Q list .
 EVERY P list ==> EVERY P (FILTER Q list)
