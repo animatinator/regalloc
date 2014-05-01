@@ -213,14 +213,71 @@ val test_conflicts = EVAL ``get_conflicts [Inst 1 2 3; Inst 0 1 2] [0]``
 
 (* Proving properties of get_conflicts and related functions *)
 
+(* list_union preserves duplicate freeness *)
+val list_union_duplicate_free = prove(``
+! xs ys . duplicate_free xs /\ duplicate_free ys
+  ==> duplicate_free (list_union xs ys)
+``,
+Induct_on `xs` THEN1 (EVAL_TAC THEN DECIDE_TAC) THEN
+REPEAT STRIP_TAC THEN
+EVAL_TAC THEN
+`duplicate_free xs` by METIS_TAC [duplicate_free_def] THEN
+Cases_on `MEM h (list_union xs ys)` THEN1 (
+	 FULL_SIMP_TAC bool_ss [] THEN	 
+	 METIS_TAC []) THEN
+FULL_SIMP_TAC bool_ss [] THEN
+`duplicate_free (list_union xs ys)` by METIS_TAC [] THEN
+FULL_SIMP_TAC bool_ss [duplicate_free_def])
+
+val list_union_flatten_duplicate_free = prove(``
+! lists .
+EVERY (\list . duplicate_free list) lists
+==> duplicate_free (list_union_flatten lists)
+``,
+Induct_on `lists` THEN1 (EVAL_TAC THEN DECIDE_TAC) THEN
+REPEAT STRIP_TAC THEN
+EVAL_TAC THEN
+FULL_SIMP_TAC bool_ss [EVERY_DEF] THEN
+`duplicate_free (list_union_flatten lists)` by METIS_TAC [] THEN
+METIS_TAC [list_union_duplicate_free])
+
+val conflicting_sets_duplicate_free = prove(``
+! code live . duplicate_free live
+  ==> EVERY (\list . duplicate_free list) (conflicting_sets code live)
+``,
+Induct_on `code` THEN1 (EVAL_TAC THEN DECIDE_TAC) THEN
+REPEAT STRIP_TAC THEN
+Cases_on `h` THEN
+FULL_SIMP_TAC bool_ss [conflicting_sets_def, get_live_def, EVERY_DEF] THEN
+`duplicate_free (get_live code live)`
+        by METIS_TAC [get_live_has_no_duplicates] THEN
+METIS_TAC [duplicate_free_insertion, duplicate_free_deletion])
+
+val every_filter_implication = prove(``
+! P Q list .
+EVERY P list ==> EVERY P (FILTER Q list)
+``,
+Induct_on `list` THEN1 (EVAL_TAC THEN DECIDE_TAC) THEN
+REPEAT STRIP_TAC THEN
+FULL_SIMP_TAC bool_ss [EVERY_DEF] THEN
+Cases_on `Q h` THEN1 (EVAL_TAC THEN FULL_SIMP_TAC bool_ss [EVERY_DEF]) THEN
+EVAL_TAC THEN FULL_SIMP_TAC bool_ss [EVERY_DEF])
+
 (* The list of conflicts for a register is duplicate_free *)
 val conflicts_for_register_duplicate_free = prove(``
 ! code live r . (duplicate_free live)
   ==> duplicate_free (conflicts_for_register r code live)
 ``,
-Induct_on `code` THEN
-EVAL_TAC THEN
-cheat) (* TODO finish *)
+REPEAT STRIP_TAC THEN
+FULL_SIMP_TAC bool_ss [conflicts_for_register_def] THEN
+`EVERY (\list . duplicate_free list)
+       (FILTER (\set . MEM r set) (conflicting_sets code live))`
+       by ALL_TAC THEN1(
+       `EVERY (\list . duplicate_free list) (conflicting_sets code live)`
+	      by ALL_TAC
+        THEN1 (METIS_TAC [conflicting_sets_duplicate_free]) THEN
+	METIS_TAC [every_filter_implication]) THEN
+METIS_TAC [list_union_flatten_duplicate_free, duplicate_free_deletion])
 
 (* The list of all registers is duplicate_free *)
 val get_registers_duplicate_free = prove(``

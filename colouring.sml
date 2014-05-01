@@ -31,11 +31,8 @@ val edge_list_well_formed_def = Define `
     			   /\ duplicate_free edges)
 `
 
-(* Vertices in graph are not linked to themselves *)
 val graph_edge_lists_well_formed_def = Define `
-    (graph_edge_lists_well_formed [] = T) /\
-    (graph_edge_lists_well_formed (e::es) = edge_list_well_formed e
-    				  /\ graph_edge_lists_well_formed es)
+    (graph_edge_lists_well_formed es = EVERY (\x . edge_list_well_formed x) es)
 `
 
 (* Proving that graphs generated in three_addrScript have the necessary
@@ -48,18 +45,31 @@ FULL_SIMP_TAC std_ss [edge_list_well_formed_def] THEN
 REPEAT STRIP_TAC THEN1 METIS_TAC [register_does_not_conflict_with_self] THEN
 METIS_TAC [conflicts_for_register_duplicate_free])
 
+val every_map = prove(``
+! (P:(num # num list) -> bool) (f:num->(num # num list)) (list:num list) .
+(! x . P (f x)) ==> EVERY P (MAP f list)
+``,
+Induct_on `list` THEN1 (EVAL_TAC THEN DECIDE_TAC) THEN
+REPEAT STRIP_TAC THEN
+EVAL_TAC THEN
+METIS_TAC [])
 
-(* TODO: This next proof. Essentially want to show that as edge_list_well_formed
-holds for each edge list created, mapping the function
-\r . (reg, conflicts_for_register reg code live)
-over any set of registers yields a list of edge lists which satisfies
-graph_edge_lists_well_formed. Not entirely sure how to express this yet,
-though *)
-(*``
-! code live . graph_edge_lists_well_formed (get_conflicts code live)
-``
-Induct_on `code`
-FULL_SIMP_TAC std_ss [get_conflicts_def]*)
+val generated_graph_edge_lists_well_formed = prove(``
+! code live . duplicate_free live ==>
+graph_edge_lists_well_formed (get_conflicts code live)
+``,
+FULL_SIMP_TAC std_ss [graph_edge_lists_well_formed_def] THEN
+FULL_SIMP_TAC std_ss [get_conflicts_def] THEN
+REPEAT STRIP_TAC THEN
+`! reg . (\edge . edge_list_well_formed edge)
+   ((\ reg . (reg, conflicts_for_register reg code live)) reg)`
+   	 by METIS_TAC [generated_edge_lists_well_formed] THEN
+ASSUME_TAC every_map THEN
+Q.PAT_ASSUM `! P f list . (! x . P (f x)) ==> EVERY P (MAP f list)`
+	    (ASSUME_TAC o Q.SPECL [`(\edge. edge_list_well_formed edge)`,
+`(\ reg . (reg, conflicts_for_register reg code live))`,
+`(get_registers code live)`]) THEN
+METIS_TAC [every_map])
 
 
 
@@ -233,9 +243,10 @@ Cases_on `q = q'` THEN1 (
 	 FULL_SIMP_TAC bool_ss [] THEN
 	 `~(MEM q' r)` by FULL_SIMP_TAC bool_ss
 	 	[graph_edge_lists_well_formed_def,
-		edge_list_well_formed_def] THEN
+		edge_list_well_formed_def, EVERY_DEF] THEN
 	 `graph_edge_lists_well_formed cs`
-	 	 by METIS_TAC [graph_edge_lists_well_formed_def] THEN
+	 	 by METIS_TAC [graph_edge_lists_well_formed_def,
+		    EVERY_DEF] THEN
 	 `colouring_satisfactory c cs`
 	 	 by METIS_TAC [colouring_satisfactory_def] THEN
 	 `colouring_satisfactory ((q' =+ n) c) cs` by METIS_TAC [] THEN
@@ -243,9 +254,9 @@ Cases_on `q = q'` THEN1 (
 	 	   apply_update_only_changes_updated_value]) THEN
 FULL_SIMP_TAC bool_ss [] THEN
 `~(MEM q' r)` by FULL_SIMP_TAC bool_ss [graph_edge_lists_well_formed_def,
-        edge_list_well_formed_def] THEN
+        edge_list_well_formed_def, EVERY_DEF] THEN
 `graph_edge_lists_well_formed cs`
-        by METIS_TAC [graph_edge_lists_well_formed_def] THEN
+        by METIS_TAC [graph_edge_lists_well_formed_def, EVERY_DEF] THEN
 `colouring_satisfactory c cs`
         by METIS_TAC [colouring_satisfactory_def] THEN
 `colouring_satisfactory ((q' =+ n) c) cs` by METIS_TAC [] THEN
@@ -289,17 +300,21 @@ EVAL_TAC THEN
 STRIP_TAC THEN
 STRIP_TAC THEN
 STRIP_TAC THEN1 (
+	  `graph_edge_lists_well_formed cs`
+	          by METIS_TAC [graph_edge_lists_well_formed_def] THEN
 	  `colouring_satisfactory (naive_colouring_aux cs (n + 1)) cs`
 	  by METIS_TAC [] THEN
 	  (* now use the fact that the edge list is well-formed - need to add
 	  this fact to the overall goal's assumptions *)
 	  `~(MEM q r)` by METIS_TAC [graph_edge_lists_well_formed_def,
-	  	 edge_list_well_formed_def] THEN
+	  	 edge_list_well_formed_def, EVERY_DEF] THEN
 	  `!x . (naive_colouring_aux cs (n + 1)) x <> n`
 	  by METIS_TAC [naive_colouring_colours_all_new] THEN
 	  FULL_SIMP_TAC std_ss [colouring_map_with_unused_update] THEN
 	  METIS_TAC [map_doesnt_contain_unused_values])
 THEN
+`graph_edge_lists_well_formed cs`
+        by METIS_TAC [graph_edge_lists_well_formed_def] THEN
 `colouring_satisfactory (naive_colouring_aux cs (n + 1)) cs` by METIS_TAC []
 THEN METIS_TAC [naive_colouring_satisfactory_with_unused_value])
 
@@ -519,7 +534,7 @@ Induct_on `cs` THEN1 (EVAL_TAC THEN DECIDE_TAC) THEN
 REPEAT STRIP_TAC THEN
 Cases_on `h` THEN
 `graph_edge_lists_well_formed cs`
-        by METIS_TAC [graph_edge_lists_well_formed_def] THEN
+        by METIS_TAC [graph_edge_lists_well_formed_def, EVERY_DEF] THEN
 `colouring_satisfactory (lowest_first_colouring cs) cs` by METIS_TAC [] THEN
 REVERSE (`~(MEM (lowest_available_colour (lowest_first_colouring cs) r)
        (MAP ((q =+ lowest_available_colour (lowest_first_colouring cs) r)
@@ -530,5 +545,5 @@ REVERSE (`~(MEM (lowest_available_colour (lowest_first_colouring cs) r)
 REPEAT STRIP_TAC THEN
 FULL_SIMP_TAC bool_ss [APPLY_UPDATE_THM] THEN
 `~(MEM q r)` by METIS_TAC [graph_edge_lists_well_formed_def,
-       edge_list_well_formed_def] THEN
+       edge_list_well_formed_def, EVERY_DEF] THEN
 METIS_TAC [function_irrelevant_update, lowest_available_colour_is_valid])
