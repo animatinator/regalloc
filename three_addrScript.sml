@@ -364,6 +364,25 @@ val no_dead_code_def = Define `
     		  /\ no_dead_code code live)
 `
 
+val remove_dead_code_def = Define `
+    (remove_dead_code [] live = []) /\
+    (remove_dead_code ((Inst w r1 r2)::code) live =
+            let (newcode = remove_dead_code code live) in
+    		      if (MEM w (get_live newcode live))
+		      	 then (Inst w r1 r2)::newcode
+			 else newcode)
+`
+
+val remove_dead_code_works = prove(``
+! code live . no_dead_code (remove_dead_code code live) live
+``,
+Induct_on `code` THEN1 (EVAL_TAC THEN DECIDE_TAC) THEN
+Cases_on `h` THEN
+FULL_SIMP_TAC std_ss [remove_dead_code_def, LET_DEF] THEN
+REPEAT STRIP_TAC THEN
+Q.ASM_CASES_TAC `MEM n (get_live (remove_dead_code code live) live)` THEN
+FULL_SIMP_TAC bool_ss [no_dead_code_def])
+
 
 (* no_dead_code is preserved by removing the first instruction *)
 val no_dead_code_preserved = prove(``
