@@ -552,3 +552,27 @@ FULL_SIMP_TAC bool_ss [APPLY_UPDATE_THM] THEN
 `~(MEM q r)` by METIS_TAC [graph_edge_lists_well_formed_def,
        edge_list_well_formed_def, EVERY_DEF] THEN
 METIS_TAC [function_irrelevant_update, lowest_available_colour_is_valid])
+
+
+
+(* Lowest-first colouring which also takes into account a preference list for
+each register *)
+
+val best_preference_colour_def = Define `
+    (best_preference_colour col rs [] = 0) /\
+    (best_preference_colour col rs (p::ps) = if ~(MEM (col p) rs) then (col p)
+    			    else (best_preference_colour col rs ps))
+`
+
+val lowest_first_preference_colouring_def = Define `
+    (lowest_first_preference_colouring [] _ = \x.0) /\
+    (lowest_first_preference_colouring ((r, rs)::cs) ps =
+        let (col:num->num) = (lowest_first_preference_colouring cs ps) in
+	let lowest_available = (lowest_available_colour col rs) in
+	let preference_colour = (best_preference_colour col rs ps) in
+	    if ~(MEM (col preference_colour) (MAP col rs)) then 
+	       ((r =+ preference_colour) col)
+            else
+		((r =+ lowest_available) col)
+    )
+`
