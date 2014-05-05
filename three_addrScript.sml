@@ -32,6 +32,16 @@ val delete_def = Define `
   delete x xs = FILTER (\y. x <> y) xs`;
 
 (* proofs about helper functions *)
+val insert_works = prove(``
+! x list . MEM x (insert x list)
+``,
+Induct_on `list` THEN1 (EVAL_TAC THEN DECIDE_TAC) THEN
+REPEAT STRIP_TAC THEN
+EVAL_TAC THEN
+Cases_on `x = h` THEN1 FULL_SIMP_TAC bool_ss [MEM] THEN
+FULL_SIMP_TAC bool_ss [] THEN
+METIS_TAC [MEM])
+
 val insert_mapping = prove(
   ``(MAP s (insert x list) = MAP t (insert x list)) ==>
   (MAP s list = MAP t list)``,
@@ -122,6 +132,14 @@ val duplicate_free_def = Define `
     (duplicate_free (x::xs) = ~(MEM x xs) /\ duplicate_free xs)
 `
 
+val duplicate_free_if_none_equal = prove(``
+! list . (! x y . MEM x list /\ MEM y list ==> x <> y) ==> duplicate_free list
+``,
+Induct_on `list` THEN1 (EVAL_TAC THEN DECIDE_TAC) THEN
+REPEAT STRIP_TAC THEN
+EVAL_TAC THEN
+FULL_SIMP_TAC bool_ss [MEM])
+
 val duplicate_free_insertion = store_thm("duplicate_free_insertion",``
     !n . duplicate_free (insert n list) = duplicate_free list``,
 Induct_on `list` THEN1 (EVAL_TAC THEN DECIDE_TAC)
@@ -179,6 +197,26 @@ val list_union_def = Define `
     (list_union [] ys = ys) /\
     (list_union (x::xs) ys = insert x (list_union xs ys))
 `
+
+val list_union_associative = prove(``
+! list list' .
+list_union list list' = list_union list' list
+``,
+cheat) (* TODO *)
+
+val list_union_completeness = prove(``
+! x list list' .
+MEM x list ==> MEM x (list_union list list')
+``,
+Induct_on `list` THEN1 (EVAL_TAC THEN DECIDE_TAC) THEN
+REPEAT STRIP_TAC THEN
+Cases_on `x = h` THEN1 (
+	 FULL_SIMP_TAC bool_ss [list_union_def] THEN
+	 METIS_TAC [insert_works]) THEN
+FULL_SIMP_TAC bool_ss [MEM] THEN
+FULL_SIMP_TAC bool_ss [list_union_def] THEN
+`MEM x (list_union list list')` by METIS_TAC [] THEN
+METIS_TAC [insert_def, MEM])
 
 val list_union_flatten_def = Define `
     (list_union_flatten [] = []) /\
@@ -313,6 +351,35 @@ val register_does_not_conflict_with_self = prove(``
 FULL_SIMP_TAC std_ss [conflicts_for_register_def] THEN
 EVAL_TAC THEN
 METIS_TAC [member_of_filtered_list])
+
+
+
+(* Proofs linking conflicting_sets and conflicts_for_register, to be used for
+proving that a 'satisfactory' colouring will satisfy colouring_ok *)
+
+(* Use this proof to pull the 'c' out of conflicts_for_register, bit by bit,
+until we can show that 'r' is a member of conflicts_for_register as needed *)
+val list_union_flatten_complete = prove(``
+! list lists x .
+MEM list lists /\ MEM x list ==> MEM x (list_union_flatten lists)
+``,
+Induct_on `lists` THEN1 (EVAL_TAC THEN DECIDE_TAC) THEN
+REPEAT STRIP_TAC THEN
+Cases_on `h = list` THEN1 (
+	 EVAL_TAC THEN
+	 METIS_TAC [list_union_completeness]) THEN
+FULL_SIMP_TAC bool_ss [MEM] THEN
+EVAL_TAC THEN
+`MEM x (list_union_flatten lists)` by METIS_TAC [] THEN
+METIS_TAC [list_union_completeness, list_union_associative])
+
+(* TODO: This next proof *)
+``
+! c code live r s .
+MEM c (conflicting_sets code live) /\ MEM r c /\ MEM s c
+==>
+MEM r (conflicts_for_register s code live)
+``
 
 
 
