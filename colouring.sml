@@ -584,7 +584,7 @@ val lowest_first_preference_colouring_def = Define `
 
 (* Lowest-first colouring with a preference graph is satisfactory *)
 val lowest_first_preference_colouring_satisfactory = prove(``
-! cs .
+! cs prefs .
   graph_edge_lists_well_formed cs ==>
   colouring_satisfactory (lowest_first_preference_colouring cs prefs) cs
 ``,
@@ -614,6 +614,9 @@ Cases_on `(MEM
      FULL_SIMP_TAC bool_ss [] THEN
      METIS_TAC [new_colour_satisfactory_if_constraints_satisfied]) THEN
 FULL_SIMP_TAC bool_ss [] THEN
+(* TODO: This next thing is very similar to the thing proved earlier and also in
+the proof of lowest_first correctness - see if it can be extracted to a
+lemma? *)
 REVERSE (`~(MEM
 (best_preference_colour
 	(lowest_first_preference_colouring cs prefs) r (prefs q))
