@@ -558,21 +558,71 @@ METIS_TAC [function_irrelevant_update, lowest_available_colour_is_valid])
 (* Lowest-first colouring which also takes into account a preference list for
 each register *)
 
+(* Select the first preference which can be satisfied, or 0 if none can be
+satisfied *)
 val best_preference_colour_def = Define `
     (best_preference_colour col rs [] = 0) /\
     (best_preference_colour col rs (p::ps) = if ~(MEM (col p) rs) then (col p)
     			    else (best_preference_colour col rs ps))
 `
 
+(* Colour the graph satisfying each vertice's preferences wherever possible and
+defaulting to lowest-first colouring where preferences cannot be satisfied *)
 val lowest_first_preference_colouring_def = Define `
-    (lowest_first_preference_colouring [] _ = \x.0) /\
-    (lowest_first_preference_colouring ((r, rs)::cs) ps =
-        let (col:num->num) = (lowest_first_preference_colouring cs ps) in
+    (lowest_first_preference_colouring [] (prefs:num->(num list)) = \x.0) /\
+    (lowest_first_preference_colouring ((r, rs)::cs) prefs =
+        let (col:num->num) = (lowest_first_preference_colouring cs prefs) in
 	let lowest_available = (lowest_available_colour col rs) in
-	let preference_colour = (best_preference_colour col rs ps) in
-	    if ~(MEM (col preference_colour) (MAP col rs)) then 
+	let preference_colour = (best_preference_colour col rs (prefs r)) in
+	    if ~(MEM preference_colour (MAP col rs)) then
 	       ((r =+ preference_colour) col)
             else
 		((r =+ lowest_available) col)
     )
 `
+
+
+(* Lowest-first colouring with a preference graph is satisfactory *)
+val lowest_first_preference_colouring_satisfactory = prove(``
+! cs .
+  graph_edge_lists_well_formed cs ==>
+  colouring_satisfactory (lowest_first_preference_colouring cs prefs) cs
+``,
+Induct_on `cs` THEN1 (EVAL_TAC THEN DECIDE_TAC) THEN
+REPEAT STRIP_TAC THEN
+Cases_on `h` THEN
+`graph_edge_lists_well_formed cs`
+        by METIS_TAC [graph_edge_lists_well_formed_def, EVERY_DEF] THEN
+`colouring_satisfactory (lowest_first_preference_colouring cs prefs) cs`
+			by METIS_TAC [] THEN
+`~(MEM (lowest_available_colour (lowest_first_preference_colouring cs prefs) r)
+(MAP ((q =+ lowest_available_colour
+     (lowest_first_preference_colouring cs prefs) r)
+(lowest_first_preference_colouring cs prefs)) r))` by ALL_TAC THEN1 (
+        REPEAT STRIP_TAC THEN
+	FULL_SIMP_TAC bool_ss [APPLY_UPDATE_THM] THEN
+	`~(MEM q r)` by METIS_TAC [graph_edge_lists_well_formed_def,
+	        edge_list_well_formed_def, EVERY_DEF] THEN
+        METIS_TAC [function_irrelevant_update,
+	        lowest_available_colour_is_valid]) THEN
+FULL_SIMP_TAC std_ss [lowest_first_preference_colouring_def] THEN
+FULL_SIMP_TAC std_ss [LET_DEF] THEN
+Cases_on `(MEM
+(best_preference_colour
+	(lowest_first_preference_colouring cs prefs) r (prefs q))
+(MAP (lowest_first_preference_colouring cs prefs) r))` THEN1 (
+     FULL_SIMP_TAC bool_ss [] THEN
+     METIS_TAC [new_colour_satisfactory_if_constraints_satisfied]) THEN
+FULL_SIMP_TAC bool_ss [] THEN
+REVERSE (`~(MEM
+(best_preference_colour
+	(lowest_first_preference_colouring cs prefs) r (prefs q))
+(MAP ((q =+
+(best_preference_colour
+	(lowest_first_preference_colouring cs prefs) r (prefs q)))
+(lowest_first_preference_colouring cs prefs)) r))
+` by ALL_TAC) THEN1 (
+  METIS_TAC [new_colour_satisfactory_if_constraints_satisfied]) THEN
+`~(MEM q r)` by METIS_TAC [graph_edge_lists_well_formed_def,
+       edge_list_well_formed_def, EVERY_DEF] THEN
+METIS_TAC [function_irrelevant_update, lowest_available_colour_is_valid])
