@@ -42,6 +42,14 @@ Cases_on `x = h` THEN1 FULL_SIMP_TAC bool_ss [MEM] THEN
 FULL_SIMP_TAC bool_ss [] THEN
 METIS_TAC [MEM])
 
+val mem_insert = prove(``
+! x y list .
+    MEM x (insert y list) /\ x <> y ==> MEM x list
+``,
+REPEAT STRIP_TAC THEN
+Cases_on `MEM y list` THEN1 FULL_SIMP_TAC bool_ss [insert_def] THEN
+METIS_TAC [insert_def, MEM])
+
 val insert_mapping = prove(
   ``(MAP s (insert x list) = MAP t (insert x list)) ==>
   (MAP s list = MAP t list)``,
@@ -407,6 +415,23 @@ Cases_on `h` THEN
 FULL_SIMP_TAC bool_ss [get_registers_def] THEN
 METIS_TAC [not_mem_after_insertion]))
 
+(* Registers not used in the program do not feature in get_live *)
+val unused_registers_not_in_get_live = prove(``
+! r code live .
+~(MEM r (get_registers code live))
+==> ~(MEM r (get_live code live))
+``,
+Induct_on `code` THEN1 (EVAL_TAC THEN DECIDE_TAC) THEN
+REPEAT STRIP_TAC THEN
+Cases_on `h` THEN
+`(r <> n) /\ (r <> n0) /\ (r <> n1)`
+    by METIS_TAC [unused_registers_are_not_used, MEM] THEN
+FULL_SIMP_TAC bool_ss [get_registers_def] THEN
+`~(MEM r (get_live code live))` by METIS_TAC [not_mem_after_insertion] THEN
+FULL_SIMP_TAC bool_ss [get_live_def] THEN
+`MEM r (delete n (get_live code live))` by METIS_TAC [mem_insert] THEN
+METIS_TAC [delete_def, MEM_FILTER])
+
 (* Registers not used in the program do not feature in any conflicting set *)
 val unused_registers_not_in_conflicting_sets = prove(``
 ! r code live set .
@@ -416,7 +441,18 @@ val unused_registers_not_in_conflicting_sets = prove(``
 ``,
 Induct_on `code` THEN1 (EVAL_TAC THEN METIS_TAC []) THEN
 REPEAT STRIP_TAC THEN
-cheat) (* TODO *)
+Cases_on `h` THEN
+`(r <> n) /\ (r <> n0) /\ (r <> n1)`
+    by METIS_TAC [unused_registers_are_not_used, MEM] THEN
+FULL_SIMP_TAC bool_ss [conflicting_sets_def, get_registers_def] THEN
+`~(MEM r (get_registers code live))` by METIS_TAC [not_mem_after_insertion] THEN
+REVERSE (Cases_on `set' = get_live (Inst n n0 n1::code) live`)
+	THEN1 METIS_TAC [MEM] THEN
+FULL_SIMP_TAC bool_ss [get_live_def] THEN
+`~(MEM r (get_live code live))`
+       by METIS_TAC [unused_registers_not_in_get_live] THEN
+`MEM r (delete n (get_live code live))` by METIS_TAC [mem_insert] THEN
+METIS_TAC [delete_def, MEM_FILTER])
 
 (* Regisers not used in the program do not conflict with anything *)
 val unused_registers_do_not_conflict = prove(``
@@ -426,7 +462,14 @@ val unused_registers_do_not_conflict = prove(``
 ``,
 REPEAT STRIP_TAC THEN
 FULL_SIMP_TAC bool_ss [conflicts_for_register_def, conflicting_sets_def] THEN
-cheat) (* TODO *)
+`! set . MEM set (conflicting_sets code live) ==> ~(MEM r set)`
+   by METIS_TAC [unused_registers_not_in_conflicting_sets] THEN
+`EVERY (\set . ~(MEM r set)) (conflicting_sets code live)`
+       by FULL_SIMP_TAC bool_ss [EVERY_MEM] THEN
+`(FILTER (\set . MEM r set) (conflicting_sets code live)) = []`
+	 by METIS_TAC [FILTER_EQ_NIL] THEN
+FULL_SIMP_TAC bool_ss [] THEN
+EVAL_TAC)
 
 
 
@@ -468,10 +511,8 @@ FULL_SIMP_TAC std_ss [delete_def] THEN
      by METIS_TAC [list_union_flatten_completeness] THEN
 FULL_SIMP_TAC bool_ss [MEM_FILTER])
 
-(* This is the main proof. Should be relatively easy to go from this to showing
-that colouring_satisfactory means colouring_ok, as we have the premise as a
-result of colouring_satisfactory (with some fiddling), and the result is
-basically the definition of colouring_ok *)
+(* Any colouring respecting conflicts_for_register will also respect the set
+of conflicting sets *)
 val respecting_register_conflicts_respects_conflicting_sets = prove(``
 ! col code live .
 duplicate_free live ==>
