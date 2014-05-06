@@ -198,15 +198,9 @@ val list_union_def = Define `
     (list_union (x::xs) ys = insert x (list_union xs ys))
 `
 
-val list_union_associative = prove(``
-! list list' .
-list_union list list' = list_union list' list
-``,
-cheat) (* TODO *)
-
 val list_union_completeness = prove(``
 ! x list list' .
-MEM x list ==> MEM x (list_union list list')
+MEM x list \/ MEM x list' ==> MEM x (list_union list list')
 ``,
 Induct_on `list` THEN1 (EVAL_TAC THEN DECIDE_TAC) THEN
 REPEAT STRIP_TAC THEN
@@ -371,7 +365,7 @@ Cases_on `h = list` THEN1 (
 FULL_SIMP_TAC bool_ss [MEM] THEN
 EVAL_TAC THEN
 `MEM x (list_union_flatten lists)` by METIS_TAC [] THEN
-METIS_TAC [list_union_completeness, list_union_associative])
+METIS_TAC [list_union_completeness])
 
 (* TODO: This next proof *)
 ``
