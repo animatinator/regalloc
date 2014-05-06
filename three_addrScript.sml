@@ -401,9 +401,10 @@ that colouring_satisfactory means colouring_ok, as we have the premise as a
 result of colouring_satisfactory (with some fiddling), and the result is
 basically the definition of colouring_ok *)
 ``
-! col . (! r . ~(MEM (c r) (MAP c (conflicts_for_register r code live))))
+! col code live .
+(! r . ~(MEM (col r) (MAP col (conflicts_for_register r code live))))
 ==>
-EVERY (\s . duplicate_free (MAP c s)) (conflicting_sets code live)
+EVERY (\s . duplicate_free (MAP col s)) (conflicting_sets code live)
 ``
 
 
