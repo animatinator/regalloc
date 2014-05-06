@@ -85,12 +85,53 @@ val colouring_satisfactory_def = Define `
     			    /\ (colouring_satisfactory col cs))
 `
 
+
+val colouring_satisfactory_on_one_vertex = prove(``
+! c cs r rs c .
+colouring_satisfactory c cs /\ MEM (r, rs) cs
+==> ~(MEM (c r) (MAP c rs))
+``,
+Induct_on `cs` THEN1 (EVAL_TAC THEN DECIDE_TAC) THEN
+REPEAT STRIP_TAC THEN
+Cases_on `h = (r, rs)` 
+	 THEN1 FULL_SIMP_TAC bool_ss [colouring_satisfactory_def] THEN
+FULL_SIMP_TAC bool_ss [MEM] THEN
+Cases_on `h` THEN
+METIS_TAC [colouring_satisfactory_def])
+
+
+val mem_after_map_conflicts = prove(``
+! (x:num) (xs: num list) (c:num->(num # num list)) .
+    MEM x xs ==> MEM (c x) (MAP c xs)``,
+RW_TAC std_ss [MEM_MAP] THEN Q.EXISTS_TAC `x`
+THEN EVAL_TAC THEN FULL_SIMP_TAC bool_ss [])
+
 val colouring_satisfactory_expansion = prove(``
-! c code live r col .
-colouring_satisfactory c (get_conflicts code live)
+! code live (r:num) (col:num->num) .
+colouring_satisfactory col (get_conflicts code live)
 ==> (! r . ~(MEM (col r) (MAP col (conflicts_for_register r code live))))
 ``,
 RW_TAC std_ss [get_conflicts_def] THEN
+Cases_on `MEM r (get_registers code live)` THEN1 (
+	 `(r, conflicts_for_register r code live) =
+	 (\reg . (reg, conflicts_for_register reg code live)) r`
+	       by METIS_TAC [] THEN
+	 ASSUME_TAC mem_after_map_conflicts THEN
+	 Q.PAT_ASSUM `!x xs c . MEM x xs ==> MEM (c x) (MAP c xs)`
+	 	     (ASSUME_TAC o Q.SPECL [`r`, `get_registers code live`,
+		     `\reg . (reg, conflicts_for_register reg code live)`]) THEN
+	 `MEM (r, conflicts_for_register r code live)
+	      (MAP (\reg . (reg, conflicts_for_register reg code live))
+	      (get_registers code live))`
+	      by METIS_TAC [] THEN
+	 `~(MEM (col r) (MAP col (conflicts_for_register r code live)))`
+	 	by METIS_TAC [colouring_satisfactory_on_one_vertex]) THEN
+`conflicts_for_register r code live = []`
+			by METIS_TAC [unused_registers_do_not_conflict] THEN
+FULL_SIMP_TAC bool_ss [] THEN
+EVAL_TAC)
+
+
 (* If r is not in get_registers, it will not feature in the map for
 get_conflicts. However, this also means conflicts_for_register will be empty
 and so the goal will still be true. *)
