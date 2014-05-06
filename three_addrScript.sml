@@ -133,12 +133,22 @@ val duplicate_free_def = Define `
 `
 
 val duplicate_free_if_none_equal = prove(``
-! list . (! x y . MEM x list /\ MEM y list ==> x <> y) ==> duplicate_free list
+! list . (! x y . x < LENGTH list /\ y < LENGTH list /\ x <> y
+  ==> (EL x list <> EL y list))
+==> duplicate_free list
 ``,
 Induct_on `list` THEN1 (EVAL_TAC THEN DECIDE_TAC) THEN
 REPEAT STRIP_TAC THEN
 EVAL_TAC THEN
-FULL_SIMP_TAC bool_ss [MEM])
+cheat)
+
+val duplicate_free_means_none_equal = prove(``
+! list x y . duplicate_free list /\ x < LENGTH list /\ y < LENGTH list
+  /\ x <> y
+==>
+EL x list <> EL y list
+``,
+cheat)
 
 val duplicate_free_insertion = store_thm("duplicate_free_insertion",``
     !n . duplicate_free (insert n list) = duplicate_free list``,
@@ -400,12 +410,34 @@ FULL_SIMP_TAC bool_ss [MEM_FILTER])
 that colouring_satisfactory means colouring_ok, as we have the premise as a
 result of colouring_satisfactory (with some fiddling), and the result is
 basically the definition of colouring_ok *)
-``
+val respecting_register_conflicts_respects_conflicting_sets = prove(``
 ! col code live .
+duplicate_free live ==>
 (! r . ~(MEM (col r) (MAP col (conflicts_for_register r code live))))
 ==>
 EVERY (\s . duplicate_free (MAP col s)) (conflicting_sets code live)
-``
+``,
+FULL_SIMP_TAC bool_ss [EVERY_MEM] THEN
+REPEAT STRIP_TAC THEN
+REVERSE(`
+! x y . x < LENGTH (MAP col s) /\ y < LENGTH (MAP col s) /\ x <> y
+==> EL x (MAP col s) <> EL y (MAP col s)` by ALL_TAC)
+    THEN1 METIS_TAC [duplicate_free_if_none_equal] THEN
+REPEAT STRIP_TAC THEN
+FULL_SIMP_TAC std_ss [LENGTH_MAP] THEN
+`col (EL x s) = col (EL y s)` by METIS_TAC [EL_MAP] THEN
+`duplicate_free s`
+		by METIS_TAC [conflicting_sets_duplicate_free, EVERY_MEM] THEN
+`EL x s <> EL y s` by METIS_TAC [duplicate_free_means_none_equal] THEN
+`MEM (EL x s) s` by METIS_TAC [MEM_EL] THEN
+`MEM (EL y s) s` by METIS_TAC [MEM_EL] THEN
+`MEM (EL x s) (conflicts_for_register (EL y s) code live)`
+     by METIS_TAC [conflicting_registers_appear_in_each_others_conflicts] THEN
+`MEM (col (EL x s)) (MAP col (conflicts_for_register (EL y s) code live))`
+     by METIS_TAC [MEM_MAP] THEN
+`~(MEM (col (EL y s)) (MAP col (conflicts_for_register (EL y s) code live)))`
+       by METIS_TAC [] THEN
+`col (EL x s) <> col (EL y s)` by METIS_TAC [])
 
 
 
