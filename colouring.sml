@@ -132,15 +132,6 @@ FULL_SIMP_TAC bool_ss [] THEN
 EVAL_TAC)
 
 
-(* If r is not in get_registers, it will not feature in the map for
-get_conflicts. However, this also means conflicts_for_register will be empty
-and so the goal will still be true. *)
-(* Approach: do a case split on MEM r get_registers. If not a member, show
-conflicts_for_register is empty and the goal holds. If a member, show that
-(r, conflicts for r) will be in the map and fed to colouring_satisfactory, and
-so by definition of colouring_satisfactory the goal must hold. *)
-cheat)
-
 (* Proving that satisfying the constraints also satisfies colouring_ok *)
 val satisfactory_colouring_is_ok = prove(``
 ! c code live .
