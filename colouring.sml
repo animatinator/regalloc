@@ -85,6 +85,35 @@ val colouring_satisfactory_def = Define `
     			    /\ (colouring_satisfactory col cs))
 `
 
+val colouring_satisfactory_expansion = prove(``
+! c code live r col .
+colouring_satisfactory c (get_conflicts code live)
+==> (! r . ~(MEM (col r) (MAP col (conflicts_for_register r code live))))
+``,
+RW_TAC std_ss [get_conflicts_def] THEN
+(* If r is not in get_registers, it will not feature in the map for
+get_conflicts. However, this also means conflicts_for_register will be empty
+and so the goal will still be true. *)
+(* Approach: do a case split on MEM r get_registers. If not a member, show
+conflicts_for_register is empty and the goal holds. If a member, show that
+(r, conflicts for r) will be in the map and fed to colouring_satisfactory, and
+so by definition of colouring_satisfactory the goal must hold. *)
+cheat)
+
+(* Proving that satisfying the constraints also satisfies colouring_ok *)
+val satisfactory_colouring_is_ok = prove(``
+! c code live .
+  duplicate_free live ==>
+  colouring_satisfactory c (get_conflicts code live)
+  ==> colouring_ok_alt c code live
+``,
+REPEAT STRIP_TAC THEN
+FULL_SIMP_TAC std_ss [colouring_ok_alt_def] THEN
+FULL_SIMP_TAC bool_ss [colouring_respects_conflicting_sets_every] THEN
+`(! r . ~(MEM (c r) (MAP c (conflicts_for_register r code live))))`
+    by METIS_TAC [colouring_satisfactory_expansion] THEN
+METIS_TAC [respecting_register_conflicts_respects_conflicting_sets])
+
 
 (* Identity colouring *)
 val identity_colouring_def = Define `

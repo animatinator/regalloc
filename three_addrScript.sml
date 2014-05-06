@@ -181,6 +181,16 @@ val colouring_respects_conflicting_sets_def = Define `
         duplicate_free (MAP c s) /\ colouring_respects_conflicting_sets c ss)
 `
 
+val colouring_respects_conflicting_sets_every = prove(``
+! c sets .
+colouring_respects_conflicting_sets c sets
+= EVERY (\ list . duplicate_free (MAP c list)) sets
+``,
+Induct_on `sets` THEN1 (EVAL_TAC THEN DECIDE_TAC) THEN
+REPEAT STRIP_TAC THEN
+EVAL_TAC THEN
+METIS_TAC [])
+
 val colouring_ok_alt_def = Define `
     (colouring_ok_alt c code live =
         colouring_respects_conflicting_sets c (conflicting_sets code live))
