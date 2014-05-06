@@ -149,7 +149,7 @@ val duplicate_free_if_none_equal = prove(``
 Induct_on `list` THEN1 (EVAL_TAC THEN DECIDE_TAC) THEN
 REPEAT STRIP_TAC THEN
 EVAL_TAC THEN
-cheat)
+cheat)  (* TODO *)
 
 val duplicate_free_means_none_equal = prove(``
 ! list x y . duplicate_free list /\ x < LENGTH list /\ y < LENGTH list
@@ -157,17 +157,23 @@ val duplicate_free_means_none_equal = prove(``
 ==>
 EL x list <> EL y list
 ``,
-cheat)
+cheat)  (* TODO *)
 
 val duplicate_free_insertion = store_thm("duplicate_free_insertion",``
     !n . duplicate_free (insert n list) = duplicate_free list``,
-Induct_on `list` THEN1 (EVAL_TAC THEN DECIDE_TAC)
-THEN RW_TAC bool_ss [insert_def] THEN RW_TAC bool_ss [duplicate_free_def])
+REPEAT STRIP_TAC THEN
+FULL_SIMP_TAC std_ss [insert_def] THEN
+Cases_on `MEM n list` THEN
+FULL_SIMP_TAC bool_ss [duplicate_free_def])
 
 val duplicate_free_deletion = store_thm("duplicate_free_deletion",``
     !n . duplicate_free (delete n list) = duplicate_free list``,
-Induct_on `list` THEN1 (EVAL_TAC THEN DECIDE_TAC)
-THEN RW_TAC bool_ss [delete_def] THEN cheat) (*todo*)
+Induct_on `list` THEN1 (EVAL_TAC THEN DECIDE_TAC) THEN
+RW_TAC bool_ss [delete_def] THEN
+Cases_on `n <> h` THEN1 (
+FULL_SIMP_TAC bool_ss [FILTER] THEN
+FULL_SIMP_TAC bool_ss [duplicate_free_def] THEN cheat) THEN
+cheat) (*todo*)
 
 val get_live_has_no_duplicates = store_thm("get_live_has_no_duplicates",``
 !code live . duplicate_free live ==> duplicate_free (get_live code live)``,
