@@ -79,9 +79,10 @@ val not_mem_after_insertion = prove(``
 ! a x xs .
 ~(MEM a (insert x xs)) ==> ~(MEM a xs)
 ``,
-Induct_on `xs` THEN1 (EVAL_TAC THEN DECIDE_TAC) THEN
 REPEAT STRIP_TAC THEN
-cheat) (* TODO *)
+Cases_on `x = a` THEN1 FULL_SIMP_TAC bool_ss [MEM, insert_def] THEN
+FULL_SIMP_TAC bool_ss [MEM, insert_def] THEN
+Cases_on `MEM x xs` THEN METIS_TAC [MEM])
 
 
 val eval_get_live = prove(
