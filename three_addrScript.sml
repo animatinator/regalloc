@@ -217,6 +217,16 @@ val list_union_flatten_def = Define `
     (list_union_flatten (l::ls) = list_union l (list_union_flatten ls))
 `
 
+val list_union_flatten_completeness = prove(``
+! x list lists .
+MEM list lists /\ MEM x list ==> MEM x (list_union_flatten lists)
+``,
+Induct_on `lists` THEN1 (EVAL_TAC THEN DECIDE_TAC) THEN
+REPEAT STRIP_TAC THEN
+FULL_SIMP_TAC bool_ss [list_union_flatten_def] THEN
+Cases_on `h = list` THEN1 METIS_TAC [list_union_completeness] THEN
+METIS_TAC [MEM, list_union_completeness])
+
 (* gather list of conflicting registers for a given register *)
 val conflicts_for_register_def = Define `
     (conflicts_for_register r code live = delete r
@@ -351,28 +361,49 @@ METIS_TAC [member_of_filtered_list])
 (* Proofs linking conflicting_sets and conflicts_for_register, to be used for
 proving that a 'satisfactory' colouring will satisfy colouring_ok *)
 
-(* Use this proof to pull the 'c' out of conflicts_for_register, bit by bit,
-until we can show that 'r' is a member of conflicts_for_register as needed *)
-val list_union_flatten_complete = prove(``
+(* If a list of lists is being filtered for whether they contain x, and x is
+in 'list', 'list' is in the result. *)
+val filter_by_membership = prove(``
 ! list lists x .
-MEM list lists /\ MEM x list ==> MEM x (list_union_flatten lists)
+MEM list lists /\ MEM x list ==> MEM list (FILTER (\list . MEM x list) lists)
 ``,
 Induct_on `lists` THEN1 (EVAL_TAC THEN DECIDE_TAC) THEN
 REPEAT STRIP_TAC THEN
-Cases_on `h = list` THEN1 (
-	 EVAL_TAC THEN
-	 METIS_TAC [list_union_completeness]) THEN
-FULL_SIMP_TAC bool_ss [MEM] THEN
 EVAL_TAC THEN
-`MEM x (list_union_flatten lists)` by METIS_TAC [] THEN
-METIS_TAC [list_union_completeness])
+Cases_on `list = h` THEN1 (
+	 FULL_SIMP_TAC bool_ss [] THEN
+	 METIS_TAC [MEM]) THEN
+FULL_SIMP_TAC std_ss [MEM] THEN
+Cases_on `MEM x h` THEN
+FULL_SIMP_TAC bool_ss [] THEN
+METIS_TAC [MEM])
 
-(* TODO: This next proof *)
-``
+(* Shows that registers in the same conflicting set will appear in each other's
+conflicts_for_register list *)
+val conflicting_registers_appear_in_each_others_conflicts = prove(``
 ! c code live r s .
-MEM c (conflicting_sets code live) /\ MEM r c /\ MEM s c
+MEM c (conflicting_sets code live) /\ MEM r c /\ MEM s c /\ r <> s
 ==>
 MEM r (conflicts_for_register s code live)
+``,
+REPEAT STRIP_TAC THEN
+FULL_SIMP_TAC std_ss [conflicts_for_register_def] THEN
+`MEM c (FILTER (\set . MEM s set) (conflicting_sets code live))`
+     by METIS_TAC [filter_by_membership] THEN
+FULL_SIMP_TAC std_ss [delete_def] THEN
+`MEM r (list_union_flatten
+     (FILTER (\set . MEM s set) (conflicting_sets code live)))`
+     by METIS_TAC [list_union_flatten_completeness] THEN
+FULL_SIMP_TAC bool_ss [MEM_FILTER])
+
+(* This is the main proof. Should be relatively easy to go from this to showing
+that colouring_satisfactory means colouring_ok, as we have the premise as a
+result of colouring_satisfactory (with some fiddling), and the result is
+basically the definition of colouring_ok *)
+``
+! col . (! r . ~(MEM (c r) (MAP c (conflicts_for_register r code live))))
+==>
+EVERY (\s . duplicate_free (MAP c s)) (conflicting_sets code live)
 ``
 
 
