@@ -1,6 +1,6 @@
 open HolKernel Parse boolLib bossLib;
 
-open arithmeticTheory listTheory combinTheory pairTheory
+open arithmeticTheory listTheory combinTheory pairTheory rich_listTheory
      finite_mapTheory relationTheory optionTheory pred_setTheory;
 
 val _ = new_theory "three_addr";
@@ -159,13 +159,41 @@ REPEAT STRIP_TAC THEN
 EVAL_TAC THEN
 cheat)  (* TODO *)
 
+val list_length_step = prove(``
+    ! n x xs . SUC n < LENGTH (x::xs)
+    ==> n < LENGTH xs
+``,
+REPEAT STRIP_TAC THEN
+FULL_SIMP_TAC arith_ss [LENGTH])
+
 val duplicate_free_means_none_equal = prove(``
 ! list x y . duplicate_free list /\ x < LENGTH list /\ y < LENGTH list
   /\ x <> y
 ==>
 EL x list <> EL y list
 ``,
-cheat)  (* TODO *)
+Induct_on `list` THEN1 (EVAL_TAC THEN DECIDE_TAC) THEN
+REPEAT STRIP_TAC THEN
+Cases_on `x = 0` THEN1 (
+	 FULL_SIMP_TAC bool_ss [EL, HD] THEN
+	 FULL_SIMP_TAC bool_ss [duplicate_free_def] THEN
+	 Cases_on `y` THEN1 METIS_TAC [] THEN
+	 FULL_SIMP_TAC bool_ss [EL, TL] THEN
+	 `n < LENGTH list` by METIS_TAC [list_length_step] THEN
+	 `MEM (EL n list) list` by METIS_TAC [EL_MEM]) THEN
+Cases_on `y = 0` THEN1 (
+	 FULL_SIMP_TAC bool_ss [EL, HD] THEN
+	 FULL_SIMP_TAC bool_ss [duplicate_free_def] THEN
+	 Cases_on `x` THEN1 METIS_TAC [] THEN
+	 FULL_SIMP_TAC bool_ss [EL, TL] THEN
+	 `n < LENGTH list` by METIS_TAC [list_length_step] THEN
+	 `MEM h list` by METIS_TAC [EL_MEM]) THEN
+Cases_on `x` THEN1 METIS_TAC [] THEN
+Cases_on `y` THEN1 METIS_TAC [] THEN
+FULL_SIMP_TAC bool_ss [EL, TL] THEN
+`n' < LENGTH list` by METIS_TAC [list_length_step] THEN
+`n < LENGTH list` by METIS_TAC [list_length_step] THEN
+METIS_TAC [duplicate_free_def])
 
 val duplicate_free_insertion = store_thm("duplicate_free_insertion",``
     !n . duplicate_free (insert n list) = duplicate_free list``,
