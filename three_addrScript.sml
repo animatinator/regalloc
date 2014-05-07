@@ -676,4 +676,63 @@ val colouring_ok_IMP_eval_apply = prove(``
   THEN IMP_RES_TAC colouring_ok_injective)
 
 
+(* Spilling function for when there are only 'k' physical registers available -
+spill registers outside of the bound by placing them in the 1000+ range *)
+val spill_high_registers_def = Define `
+    (spill_high_registers c k =
+    			  (\r . if ((c r) >= k) then ((c r) + 1000) else (c r)))
+`
+
+
+val duplicate_free_after_spilling = prove(``
+! c k list .
+duplicate_free (MAP c list)
+==>
+duplicate_free (MAP (\r . if ((c r) >= k) then (c r + 1000) else (c r)) list)
+``,
+REPEAT STRIP_TAC THEN
+
+`! x y . x < LENGTH (MAP c list) /\ y < LENGTH (MAP c list) /\ x <> y
+==> EL x (MAP c list) <> EL y (MAP c list)`
+    by METIS_TAC [duplicate_free_means_none_equal] THEN
+
+`LENGTH (MAP (\r . if c r >= k then c r + 1000 else c r) list)
+	= LENGTH (MAP c list)` by METIS_TAC [LENGTH_MAP] THEN
+REVERSE (`! x y . x < LENGTH (MAP c list) /\ y < LENGTH (MAP c list) /\ x <> y
+==> EL x (MAP (\r . if c r >= k then c r + 1000 else c r) list)
+<> EL y (MAP (\r . if c r >= k then c r + 1000 else c r) list)` by ALL_TAC)
+   THEN1 METIS_TAC [duplicate_free_if_none_equal] THEN
+REPEAT STRIP_TAC THEN
+
+(* Not sure about this approach, commenting out for now...
+`x < LENGTH list /\ y < LENGTH list` by METIS_TAC [LENGTH_MAP] THEN
+`((\r. if c r >= k then c r + 1000 else c r) (EL y list)) =
+((\r. if c r >= k then c r + 1000 else c r) (EL x list))`
+      by FULL_SIMP_TAC bool_ss [EL_MAP] THEN
+`duplicate_free list` by cheat THEN (* TODO should follow trivially from
+duplicate_free (MAP c list) *)
+`EL x list <> EL y list` by METIS_TAC [duplicate_free_means_none_equal] THEN *)
+
+`EL x (MAP c list) <> EL y (MAP c list)` by METIS_TAC [] THEN
+(* TODO: Can this be used to show the elements aren't equal when the map is the
+one with the branch? *)
+cheat)
+
+
+val colouring_ok_after_spilling = prove(``
+! c k code live .
+colouring_ok_alt c code live
+==>
+colouring_ok_alt (spill_high_registers c k) code live
+``,
+Induct_on `code` THEN1
+	  (EVAL_TAC THEN METIS_TAC [duplicate_free_after_spilling]) THEN
+REPEAT STRIP_TAC THEN
+Cases_on `h` THEN
+FULL_SIMP_TAC bool_ss [colouring_ok_alt_def,
+        colouring_respects_conflicting_sets_def, conflicting_sets_def] THEN
+FULL_SIMP_TAC bool_ss [spill_high_registers_def] THEN
+METIS_TAC [duplicate_free_after_spilling])
+
+
 val _ = export_theory();
