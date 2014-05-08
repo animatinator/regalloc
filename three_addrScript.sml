@@ -208,7 +208,15 @@ Induct_on `list` THEN1 (EVAL_TAC THEN DECIDE_TAC) THEN
 RW_TAC bool_ss [delete_def] THEN
 Cases_on `n <> h` THEN1 (
 FULL_SIMP_TAC bool_ss [FILTER] THEN
-FULL_SIMP_TAC bool_ss [duplicate_free_def] THEN cheat) THEN
+FULL_SIMP_TAC bool_ss [duplicate_free_def] THEN
+`duplicate_free (FILTER (\y . n <> y) list) = duplicate_free list`
+		by METIS_TAC [delete_def] THEN
+`MEM h (FILTER (\y . n <> y) list) = (n <> h) /\ MEM h list`
+     by FULL_SIMP_TAC std_ss [MEM_FILTER] THEN
+`~(MEM h (FILTER (\y . n <> y) list)) = ~(MEM h list)`
+       by METIS_TAC [delete_def] THEN
+METIS_TAC []) THEN
+FULL_SIMP_TAC bool_ss [FILTER, duplicate_free_def] THEN
 cheat) (*todo*)
 
 val get_live_has_no_duplicates = store_thm("get_live_has_no_duplicates",``
@@ -705,18 +713,18 @@ val colouring_ok_IMP_eval_apply = prove(``
 
 
 (* Spilling function for when there are only 'k' physical registers available -
-spill registers outside of the bound by placing them in the 1000+ range *)
+spill registers outside of the bound by placing them in the N+ range *)
 val spill_high_registers_def = Define `
-    (spill_high_registers c k =
-    			  (\r . if ((c r) >= k) then ((c r) + 1000) else (c r)))
+    (spill_high_registers c k N =
+    			  (\r . if ((c r) >= k) then ((c r) + N) else (c r)))
 `
 
 
 val duplicate_free_after_spilling = prove(``
-! c k list .
-duplicate_free (MAP c list)
+! c k N list .
+duplicate_free (MAP c list) /\ k < N
 ==>
-duplicate_free (MAP (\r . if ((c r) >= k) then (c r + 1000) else (c r)) list)
+duplicate_free (MAP (spill_high_registers c k N) list)
 ``,
 REPEAT STRIP_TAC THEN
 
@@ -731,15 +739,6 @@ REVERSE (`! x y . x < LENGTH (MAP c list) /\ y < LENGTH (MAP c list) /\ x <> y
 <> EL y (MAP (\r . if c r >= k then c r + 1000 else c r) list)` by ALL_TAC)
    THEN1 METIS_TAC [duplicate_free_if_none_equal] THEN
 REPEAT STRIP_TAC THEN
-
-(* Not sure about this approach, commenting out for now...
-`x < LENGTH list /\ y < LENGTH list` by METIS_TAC [LENGTH_MAP] THEN
-`((\r. if c r >= k then c r + 1000 else c r) (EL y list)) =
-((\r. if c r >= k then c r + 1000 else c r) (EL x list))`
-      by FULL_SIMP_TAC bool_ss [EL_MAP] THEN
-`duplicate_free list` by cheat THEN (* TODO should follow trivially from
-duplicate_free (MAP c list) *)
-`EL x list <> EL y list` by METIS_TAC [duplicate_free_means_none_equal] THEN *)
 
 `EL x (MAP c list) <> EL y (MAP c list)` by METIS_TAC [] THEN
 (* TODO: Can this be used to show the elements aren't equal when the map is the
