@@ -712,6 +712,7 @@ val colouring_ok_IMP_eval_apply = prove(``
   THEN IMP_RES_TAC colouring_ok_injective)
 
 
+(*
 (* Spilling function for when there are only 'k' physical registers available -
 spill registers outside of the bound by placing them in the N+ range *)
 val spill_high_registers_def = Define `
@@ -760,6 +761,41 @@ FULL_SIMP_TAC bool_ss [colouring_ok_alt_def,
         colouring_respects_conflicting_sets_def, conflicting_sets_def] THEN
 FULL_SIMP_TAC bool_ss [spill_high_registers_def] THEN
 METIS_TAC [duplicate_free_after_spilling])
+*)
+
+
+(* Different approach - will define spill_high_registers as a function applied
+to the result of the colouring, and show that it maintains duplicate-freeness *)
+val spill_def = Define `
+    (spill x = x + 1000)
+`
+
+val spill_high_registers_def = Define `
+    (spill_high_registers k = (\x . if x >= k then (spill x) else x))
+`
+
+val injective_def = Define `
+    (injective f = !x y . (f x = f y) ==> (x = y))
+`
+
+(* Something like this: *)
+val injective_preserves_duplicate_freeness = prove(``
+! list f .
+  (duplicate_free list) /\ (injective f)
+  ==> duplicate_free (MAP f list)
+``,
+Induct_on `list` THEN1 (EVAL_TAC THEN DECIDE_TAC) THEN
+REPEAT STRIP_TAC THEN
+EVAL_TAC THEN
+FULL_SIMP_TAC std_ss [duplicate_free_def] THEN
+FULL_SIMP_TAC std_ss [injective_def] THEN
+FULL_SIMP_TAC std_ss [MEM_MAP] THEN
+STRIP_TAC THEN
+Cases_on `h = y` THEN1 METIS_TAC [] THEN
+METIS_TAC [])
+
+(* Then show that applying it to only some elements still yields
+duplicate-freeness *)
 
 
 val _ = export_theory();
