@@ -83,7 +83,8 @@ val MEM_inserted_item = prove(``MEM x (insert x xs)``, SIMP_TAC std_ss [MEM_inse
 
 val MEM_after_insertion = prove(``MEM x xs ==> MEM x (insert y xs)``, SRW_TAC [] [insert_def]);
 
-val not_mem_after_insertion = prove(``
+val not_mem_after_insertion = store_thm("not_mem_after_insertion",
+``
 ! a x xs .
 ~(MEM a (insert x xs)) ==> ~(MEM a xs)
 ``,
@@ -93,7 +94,7 @@ FULL_SIMP_TAC bool_ss [MEM, insert_def] THEN
 Cases_on `MEM x xs` THEN METIS_TAC [MEM])
 
 
-val eval_get_live = prove(
+val eval_get_live = store_thm("eval_get_live",
   ``!code s t live f.
       (MAP s (get_live code live) = MAP t (get_live code live)) ==>
       (MAP (eval f s code) live = MAP (eval f t code) live)``,
@@ -149,7 +150,8 @@ val duplicate_free_def = Define `
     (duplicate_free (x::xs) = ~(MEM x xs) /\ duplicate_free xs)
 `
 
-val duplicate_free_if_none_equal = prove(``
+val duplicate_free_if_none_equal = store_thm("duplicate_free_if_none_equal",
+``
 ! list . (! x y . x < LENGTH list /\ y < LENGTH list /\ x <> y
   ==> (EL x list <> EL y list))
 ==> duplicate_free list
@@ -166,7 +168,9 @@ val list_length_step = prove(``
 REPEAT STRIP_TAC THEN
 FULL_SIMP_TAC arith_ss [LENGTH])
 
-val duplicate_free_means_none_equal = prove(``
+val duplicate_free_means_none_equal = store_thm(
+    "duplicate_free_means_none_equal",
+``
 ! list x y . duplicate_free list /\ x < LENGTH list /\ y < LENGTH list
   /\ x <> y
 ==>
@@ -240,7 +244,9 @@ val colouring_respects_conflicting_sets_def = Define `
         duplicate_free (MAP c s) /\ colouring_respects_conflicting_sets c ss)
 `
 
-val colouring_respects_conflicting_sets_every = prove(``
+val colouring_respects_conflicting_sets_every = store_thm(
+    "colouring_respects_conflicting_sets_every",
+``
 ! c sets .
 colouring_respects_conflicting_sets c sets
 = EVERY (\ list . duplicate_free (MAP c list)) sets
@@ -262,7 +268,7 @@ val colouring_ok_def = Define `
     		  /\ colouring_ok c code live)
 `
 
-val colouring_ok_def_equivalence = prove(
+val colouring_ok_def_equivalence = store_thm("colouring_ok_def_equivalence",
     ``colouring_ok_alt c code live = colouring_ok c code live``,
     Induct_on `code`
     THEN1 EVAL_TAC
@@ -277,7 +283,8 @@ val list_union_def = Define `
     (list_union (x::xs) ys = insert x (list_union xs ys))
 `
 
-val list_union_completeness = prove(``
+val list_union_completeness = store_thm("list_union_completeness",
+``
 ! x list list' .
 MEM x list \/ MEM x list' ==> MEM x (list_union list list')
 ``,
@@ -296,7 +303,9 @@ val list_union_flatten_def = Define `
     (list_union_flatten (l::ls) = list_union l (list_union_flatten ls))
 `
 
-val list_union_flatten_completeness = prove(``
+val list_union_flatten_completeness = store_thm(
+    "list_union_flatten_completeness",
+``
 ! x list lists .
 MEM list lists /\ MEM x list ==> MEM x (list_union_flatten lists)
 ``,
@@ -335,7 +344,8 @@ val test_conflicts = EVAL ``get_conflicts [Inst 1 2 3; Inst 0 1 2] [0]``
 (* Proving properties of get_conflicts and related functions *)
 
 (* list_union preserves duplicate freeness *)
-val list_union_duplicate_free = prove(``
+val list_union_duplicate_free = store_thm("list_union_duplicate_free",
+``
 ! xs ys . duplicate_free xs /\ duplicate_free ys
   ==> duplicate_free (list_union xs ys)
 ``,
@@ -351,7 +361,9 @@ FULL_SIMP_TAC bool_ss [] THEN
 FULL_SIMP_TAC bool_ss [duplicate_free_def])
 
 (* list_union_flatten preserves duplicate freeness *)
-val list_union_flatten_duplicate_free = prove(``
+val list_union_flatten_duplicate_free = store_thm(
+    "list_union_flatten_duplicate_free",
+``
 ! lists .
 EVERY (\list . duplicate_free list) lists
 ==> duplicate_free (list_union_flatten lists)
@@ -364,7 +376,9 @@ FULL_SIMP_TAC bool_ss [EVERY_DEF] THEN
 METIS_TAC [list_union_duplicate_free])
 
 (* conflicting_sets generates duplicate-free sets *)
-val conflicting_sets_duplicate_free = prove(``
+val conflicting_sets_duplicate_free = store_thm(
+    "conflicting_sets_duplicate_free",
+``
 ! code live . duplicate_free live
   ==> EVERY (\list . duplicate_free list) (conflicting_sets code live)
 ``,
@@ -377,7 +391,8 @@ FULL_SIMP_TAC bool_ss [conflicting_sets_def, get_live_def, EVERY_DEF] THEN
 METIS_TAC [duplicate_free_insertion, duplicate_free_deletion])
 
 (* If 'EVERY P list' holds, then it also holds after the list is filtered *)
-val every_filter_implication = prove(``
+val every_filter_implication = store_thm("every_filter_implication",
+``
 ! P Q list .
 EVERY P list ==> EVERY P (FILTER Q list)
 ``,
@@ -388,7 +403,9 @@ Cases_on `Q h` THEN1 (EVAL_TAC THEN FULL_SIMP_TAC bool_ss [EVERY_DEF]) THEN
 EVAL_TAC THEN FULL_SIMP_TAC bool_ss [EVERY_DEF])
 
 (* The list of conflicts for a register is duplicate_free *)
-val conflicts_for_register_duplicate_free = prove(``
+val conflicts_for_register_duplicate_free = store_thm(
+    "conflicts_for_register_duplicate_free",
+``
 ! code live r . (duplicate_free live)
   ==> duplicate_free (conflicts_for_register r code live)
 ``,
@@ -404,7 +421,8 @@ FULL_SIMP_TAC bool_ss [conflicts_for_register_def] THEN
 METIS_TAC [list_union_flatten_duplicate_free, duplicate_free_deletion])
 
 (* The list of all registers is duplicate_free *)
-val get_registers_duplicate_free = prove(``
+val get_registers_duplicate_free = store_thm("get_registers_duplicate_free",
+``
 ! code live . (duplicate_free live)
   ==> duplicate_free (get_registers code live)
 ``,
@@ -427,7 +445,9 @@ FULL_SIMP_TAC bool_ss [MEM] THEN
 METIS_TAC [])
 
 (* A register does not feature in the list of registers conflicting with it *)
-val register_does_not_conflict_with_self = prove(``
+val register_does_not_conflict_with_self = store_thm(
+    "register_does_not_conflict_with_self",
+``
     ! r code live .
     ~(MEM r (conflicts_for_register r code live))
 ``,
@@ -436,7 +456,8 @@ EVAL_TAC THEN
 METIS_TAC [member_of_filtered_list])
 
 (* Registers not used in the program do not feature in any instruction *)
-val unused_registers_are_not_used = prove(``
+val unused_registers_are_not_used = store_thm("unused_registers_are_not_used",
+``
 ! r code live w r1 r2 .
 ~(MEM r (get_registers code live)) /\ (MEM (Inst w r1 r2) code)
 ==> (r <> w) /\ (r <> r1) /\ (r <> r2)
@@ -452,7 +473,9 @@ FULL_SIMP_TAC bool_ss [get_registers_def] THEN
 METIS_TAC [not_mem_after_insertion]))
 
 (* Registers not used in the program do not feature in get_live *)
-val unused_registers_not_in_get_live = prove(``
+val unused_registers_not_in_get_live = store_thm(
+    "unused_registers_not_in_get_live",
+``
 ! r code live .
 ~(MEM r (get_registers code live))
 ==> ~(MEM r (get_live code live))
@@ -469,7 +492,9 @@ FULL_SIMP_TAC bool_ss [get_live_def] THEN
 METIS_TAC [delete_def, MEM_FILTER])
 
 (* Registers not used in the program do not feature in any conflicting set *)
-val unused_registers_not_in_conflicting_sets = prove(``
+val unused_registers_not_in_conflicting_sets = store_thm(
+    "unused_registers_not_in_conflicting_sets",
+``
 ! r code live set .
 ~(MEM r (get_registers code live)) /\ (MEM set (conflicting_sets code live))
 ==>
@@ -482,7 +507,7 @@ Cases_on `h` THEN
     by METIS_TAC [unused_registers_are_not_used, MEM] THEN
 FULL_SIMP_TAC bool_ss [conflicting_sets_def, get_registers_def] THEN
 `~(MEM r (get_registers code live))` by METIS_TAC [not_mem_after_insertion] THEN
-REVERSE (Cases_on `set' = get_live (Inst n n0 n1::code) live`)
+Tactical.REVERSE (Cases_on `set' = get_live (Inst n n0 n1::code) live`)
 	THEN1 METIS_TAC [MEM] THEN
 FULL_SIMP_TAC bool_ss [get_live_def] THEN
 `~(MEM r (get_live code live))`
@@ -491,7 +516,9 @@ FULL_SIMP_TAC bool_ss [get_live_def] THEN
 METIS_TAC [delete_def, MEM_FILTER])
 
 (* Regisers not used in the program do not conflict with anything *)
-val unused_registers_do_not_conflict = prove(``
+val unused_registers_do_not_conflict = store_thm(
+    "unused_registers_do_not_conflict",
+``
 ! r code live .
 ~(MEM r (get_registers code live)) ==>
 ((conflicts_for_register r code live) = [])
@@ -531,7 +558,9 @@ METIS_TAC [MEM])
 
 (* Shows that registers in the same conflicting set will appear in each other's
 conflicts_for_register list *)
-val conflicting_registers_appear_in_each_others_conflicts = prove(``
+val conflicting_registers_appear_in_each_others_conflicts = store_thm(
+    "conflicting_registers_appear_in_each_others_conflicts",
+``
 ! c code live r s .
 MEM c (conflicting_sets code live) /\ MEM r c /\ MEM s c /\ r <> s
 ==>
@@ -549,7 +578,9 @@ FULL_SIMP_TAC bool_ss [MEM_FILTER])
 
 (* Any colouring respecting conflicts_for_register will also respect the set
 of conflicting sets *)
-val respecting_register_conflicts_respects_conflicting_sets = prove(``
+val respecting_register_conflicts_respects_conflicting_sets = store_thm(
+    "respecting_register_conflicts_respects_conflicting_sets",
+``
 ! col code live .
 duplicate_free live ==>
 (! r . ~(MEM (col r) (MAP col (conflicts_for_register r code live))))
@@ -558,7 +589,7 @@ EVERY (\s . duplicate_free (MAP col s)) (conflicting_sets code live)
 ``,
 FULL_SIMP_TAC bool_ss [EVERY_MEM] THEN
 REPEAT STRIP_TAC THEN
-REVERSE(`
+Tactical.REVERSE(`
 ! x y . x < LENGTH (MAP col s) /\ y < LENGTH (MAP col s) /\ x <> y
 ==> EL x (MAP col s) <> EL y (MAP col s)` by ALL_TAC)
     THEN1 METIS_TAC [duplicate_free_if_none_equal] THEN
@@ -587,7 +618,8 @@ THEN EVAL_TAC THEN FULL_SIMP_TAC bool_ss [])
 
 (* proving a simplified version of the injectivity goal, for the case where
 'code' is empty *)
-val colouring_ok_injectivity_base = prove(``!(c:num->num) live x y .
+val colouring_ok_injectivity_base = store_thm("colouring_ok_injectivity_base",
+``!(c:num->num) live x y .
 	colouring_ok c [] live /\ MEM x live /\ MEM y live /\ (c x = c y)
 	==> (x = y)
 ``,
@@ -637,7 +669,8 @@ val remove_dead_code_def = Define `
 			 else newcode)
 `
 
-val remove_dead_code_works = prove(``
+val remove_dead_code_works = store_thm("remove_dead_code_works",
+``
 ! code live . no_dead_code (remove_dead_code code live) live
 ``,
 Induct_on `code` THEN1 (EVAL_TAC THEN DECIDE_TAC) THEN
@@ -649,18 +682,20 @@ FULL_SIMP_TAC bool_ss [no_dead_code_def])
 
 
 (* no_dead_code is preserved by removing the first instruction *)
-val no_dead_code_preserved = prove(``
+val no_dead_code_preserved = store_thm("no_dead_code_preserved",
+``
     no_dead_code (Inst n n0 n1 :: code) live ==>
     no_dead_code code live``,
     RW_TAC std_ss [no_dead_code_def])
 
 (* colouring_ok is preserved by removing the first instruction *)
-val colouring_ok_preserved = prove(``
+val colouring_ok_preserved = store_thm("colouring_ok_preserved",
+``
     colouring_ok c (Inst n n0 n1 :: code) live ==>
     colouring_ok c code live``,
     RW_TAC std_ss [colouring_ok_def]);
 
-val duplicate_free_MAP_IMP_NEQ = prove(
+val duplicate_free_MAP_IMP_NEQ = store_thm("duplicate_free_MAP_IMP_NEQ",
   ``!c live x y.
       duplicate_free (MAP c live) /\ x <> y /\ MEM x live /\ MEM y live ==>
       c x <> c y``,
@@ -672,14 +707,15 @@ val duplicate_free_MAP_IMP_NEQ = prove(
   THEN Cases_on `y = h` THEN1 (METIS_TAC [MEM, MAP, MEM_MAP])
   THEN METIS_TAC [MEM]);
 
-val colouring_ok_IMP = prove(
+val colouring_ok_IMP = store_thm("colouring_ok_IMP",
   ``colouring_ok c code live ==>
     duplicate_free (MAP c (get_live code live))``,
   Cases_on `code` THEN TRY (Cases_on `h`)
   THEN EVAL_TAC
   THEN RW_TAC std_ss [colouring_ok_def]);
 
-val colouring_ok_injective = prove(``
+val colouring_ok_injective = store_thm("colouring_ok_injective",
+``
     ! c code live x y .
       (no_dead_code code live) /\
       (colouring_ok c code live) /\ ~(x = y) /\
@@ -689,7 +725,8 @@ val colouring_ok_injective = prove(``
   THEN IMP_RES_TAC colouring_ok_IMP
   THEN IMP_RES_TAC duplicate_free_MAP_IMP_NEQ)
 
-val colouring_ok_IMP_eval_apply = prove(``
+val colouring_ok_IMP_eval_apply = store_thm("colouring_ok_IMP_eval_apply",
+``
    !code s t c live f.
       colouring_ok c code live /\ no_dead_code code live /\
       (MAP s (get_live code live) = MAP (t o c) (get_live code live)) ==>
@@ -705,7 +742,7 @@ val colouring_ok_IMP_eval_apply = prove(``
   THEN FULL_SIMP_TAC std_ss [MAP_EQ_f,APPLY_UPDATE_THM]
   THEN FULL_SIMP_TAC std_ss [get_live_def,MEM_insert,MEM,delete_def,MEM_FILTER]
   THEN REPEAT STRIP_TAC
-  THEN REVERSE (`(c n = c e) = (n = e)` by ALL_TAC)
+  THEN Tactical.REVERSE (`(c n = c e) = (n = e)` by ALL_TAC)
   THEN1 FULL_SIMP_TAC std_ss []
   THEN Cases_on `n = e` THEN FULL_SIMP_TAC std_ss []
   THEN FULL_SIMP_TAC std_ss [no_dead_code_def, colouring_ok_def]
@@ -735,7 +772,7 @@ REPEAT STRIP_TAC THEN
 
 `LENGTH (MAP (\r . if c r >= k then c r + 1000 else c r) list)
 	= LENGTH (MAP c list)` by METIS_TAC [LENGTH_MAP] THEN
-REVERSE (`! x y . x < LENGTH (MAP c list) /\ y < LENGTH (MAP c list) /\ x <> y
+Tactical.REVERSE (`! x y . x < LENGTH (MAP c list) /\ y < LENGTH (MAP c list) /\ x <> y
 ==> EL x (MAP (\r . if c r >= k then c r + 1000 else c r) list)
 <> EL y (MAP (\r . if c r >= k then c r + 1000 else c r) list)` by ALL_TAC)
    THEN1 METIS_TAC [duplicate_free_if_none_equal] THEN

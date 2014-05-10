@@ -690,3 +690,5 @@ REVERSE (`~(MEM
 `~(MEM q r)` by METIS_TAC [graph_edge_lists_well_formed_def,
        edge_list_well_formed_def, EVERY_DEF] THEN
 METIS_TAC [function_irrelevant_update, lowest_available_colour_is_valid])
+
+val _ = export_theory();
