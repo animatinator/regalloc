@@ -432,6 +432,12 @@ val heuristic_ok_def = Define `
     ! (list:(num # num list) list) . set (heuristic_sort f list) = set (list))
 `
 
+val heuristic_ok_IMP_heuristic_application_ok = prove(``
+! f . heuristic_ok f ==> heuristic_application_ok (heuristic_sort f)
+``,
+REPEAT STRIP_TAC THEN
+FULL_SIMP_TAC bool_ss [heuristic_ok_def, heuristic_application_ok_def])
+
 val insert_adds_correctly = prove(``
 ! f x ys . MEM x (heuristic_insert f x ys)
 ``,
