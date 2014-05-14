@@ -494,6 +494,91 @@ val highest_degree_correctness = prove(``heuristic_ok highest_degree``,
     METIS_TAC [all_heuristic_sorts_ok])
 
 
+(* Heuristic which selects the vertex with lowest degree in the subgraph of
+vertices not considered each time *)
+
+(* Returns the first element of a given list of conflicts which has not been
+considered *)
+val first_not_considered_def = Define `
+    (first_not_considered done ((r, rs)::cs) = if (done r)
+    			  then (first_not_considered done cs)
+			  else (r, rs))
+`
+
+(* Sorts the list of conflicts according to degree in the subgraph where those
+already considered have been removed *)
+(* TODO *)
+val sort_not_considered_by_degree = Define `
+    (sort_not_considered_by_degree
+        (done:num->bool) (list:(num # num list) list) = list)
+`
+
+(* The heuristic itself *)
+val lowest_degree_subgraph_heuristic_aux_def = tDefine
+    "lowest_degree_subgraph_heuristic_aux" `
+    (lowest_degree_subgraph_heuristic_aux done [] cs' = cs') /\
+    (lowest_degree_subgraph_heuristic_aux done ((r, rs)::cs) cs' =
+        let sorted = (sort_not_considered_by_degree done cs) in
+        lowest_degree_subgraph_heuristic_aux
+		(r INSERT done) sorted ((r, rs)::cs'))
+` (WF_REL_TAC ` measure (\ (done, cs, cs') . LENGTH cs)` THEN
+`! done cs . LENGTH (sort_not_considered_by_degree done cs) =
+LENGTH (cs)` by cheat THEN
+FULL_SIMP_TAC arith_ss [LENGTH])
+
+val lowest_degree_subgraph_heuristic_def = Define `
+    (lowest_degree_subgraph_heuristic cs =
+        lowest_degree_subgraph_heuristic_aux (\x . F) cs [])
+`
+
+
+val lowest_degree_subgraph_result_set = prove(``
+! q r cs list done .
+set (lowest_degree_subgraph_heuristic_aux done list ((q,r)::cs)) =
+(q,r) INSERT set (lowest_degree_subgraph_heuristic_aux done list cs)
+``, cheat)
+
+val lowest_degree_subgraph_done = prove(``
+! q cs list done .
+set (lowest_degree_subgraph_heuristic_aux (q INSERT done) list cs) =
+set (lowest_degree_subgraph_heuristic_aux done list cs)
+``, cheat)
+
+val lowest_degree_subgraph_set_order_irrelevant = prove(``
+! done list list' cs .
+(set list = set list') ==>
+(set (lowest_degree_subgraph_heuristic_aux done list cs) =
+set (lowest_degree_subgraph_heuristic_aux done list' cs))
+``, cheat)
+
+val lowest_degree_subgraph_step = prove(``
+! done h list cs' .
+set (lowest_degree_subgraph_heuristic_aux done (h::list) cs') =
+h INSERT (set (lowest_degree_subgraph_heuristic_aux done list cs'))
+``,
+REPEAT STRIP_TAC THEN
+Cases_on `h` THEN
+FULL_SIMP_TAC bool_ss [lowest_degree_subgraph_heuristic_aux_def] THEN
+FULL_SIMP_TAC bool_ss [LET_DEF] THEN
+`set (sort_not_considered_by_degree done list) = set list` by cheat THEN
+METIS_TAC [lowest_degree_subgraph_result_set, lowest_degree_subgraph_done,
+lowest_degree_subgraph_set_order_irrelevant])
+
+val lowest_degree_subgraph_heuristic_aux_preserves_set = prove(``
+! list . set (lowest_degree_subgraph_heuristic_aux (\x.F) list []) = set list
+``,
+Induct_on `list` THEN1 EVAL_TAC THEN
+REPEAT STRIP_TAC THEN
+FULL_SIMP_TAC bool_ss [lowest_degree_subgraph_step] THEN
+METIS_TAC [LIST_TO_SET])
+
+val lowest_degree_subgraph_heuristic_ok = prove(``
+heuristic_application_ok lowest_degree_subgraph_heuristic
+``,
+FULL_SIMP_TAC std_ss [heuristic_application_ok_def, lowest_degree_subgraph_heuristic_def] THEN
+METIS_TAC [lowest_degree_subgraph_heuristic_aux_preserves_set])
+
+
 
 (* Lowest-first colouring:
 Take the supplied constraints in order, and assign to each register the
