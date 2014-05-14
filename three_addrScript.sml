@@ -42,6 +42,22 @@ Cases_on `x = h` THEN1 FULL_SIMP_TAC bool_ss [MEM] THEN
 FULL_SIMP_TAC bool_ss [] THEN
 METIS_TAC [MEM])
 
+(* X is not a member of a list which has all things equal to it filtered out *)
+val member_of_filtered_list = prove(``
+    ! x list . ~(MEM x (FILTER (\ y . x <> y) list))
+``,
+Induct_on `list` THEN1 (EVAL_TAC THEN DECIDE_TAC) THEN
+REPEAT STRIP_TAC THEN
+FULL_SIMP_TAC bool_ss [FILTER] THEN
+Cases_on `x = h` THEN1 METIS_TAC [] THEN
+FULL_SIMP_TAC bool_ss [MEM] THEN
+METIS_TAC [])
+
+val delete_works = store_thm("delete_works",
+``
+! x list . ~(MEM x (delete x list))
+``, FULL_SIMP_TAC bool_ss [delete_def, member_of_filtered_list])
+
 val mem_insert = prove(``
 ! x y list .
     MEM x (insert y list) /\ x <> y ==> MEM x list
@@ -432,17 +448,6 @@ REPEAT STRIP_TAC THEN
 Cases_on `h` THEN
 FULL_SIMP_TAC bool_ss [get_registers_def] THEN
 METIS_TAC [duplicate_free_insertion])
-
-(* X is not a member of a list which has all things equal to it filtered out *)
-val member_of_filtered_list = prove(``
-    ! x list . ~(MEM x (FILTER (\ y . x <> y) list))
-``,
-Induct_on `list` THEN1 (EVAL_TAC THEN DECIDE_TAC) THEN
-REPEAT STRIP_TAC THEN
-FULL_SIMP_TAC bool_ss [FILTER] THEN
-Cases_on `x = h` THEN1 METIS_TAC [] THEN
-FULL_SIMP_TAC bool_ss [MEM] THEN
-METIS_TAC [])
 
 (* A register does not feature in the list of registers conflicting with it *)
 val register_does_not_conflict_with_self = store_thm(
