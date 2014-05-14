@@ -427,16 +427,16 @@ val heuristic_sort_def = Define	`
     (heuristic_sort f (x::xs) = (heuristic_insert f x (heuristic_sort f xs)))
 `
 
-val heuristic_ok_def = Define `
-    (heuristic_ok (f:(num # num list)->num) =
+val sort_heuristic_ok_def = Define `
+    (sort_heuristic_ok (f:(num # num list)->num) =
     ! (list:(num # num list) list) . set (heuristic_sort f list) = set (list))
 `
 
-val heuristic_ok_IMP_heuristic_application_ok = prove(``
-! f . heuristic_ok f ==> heuristic_application_ok (heuristic_sort f)
+val sort_heuristic_ok_IMP_heuristic_application_ok = prove(``
+! f . sort_heuristic_ok f ==> heuristic_application_ok (heuristic_sort f)
 ``,
 REPEAT STRIP_TAC THEN
-FULL_SIMP_TAC bool_ss [heuristic_ok_def, heuristic_application_ok_def])
+FULL_SIMP_TAC bool_ss [sort_heuristic_ok_def, heuristic_application_ok_def])
 
 val insert_adds_correctly = prove(``
 ! f x ys . MEM x (heuristic_insert f x ys)
@@ -470,9 +470,9 @@ METIS_TAC [])
 
 
 val all_heuristic_sorts_ok = prove(``
-! (f:(num # num list)->num) . heuristic_ok f
+! (f:(num # num list)->num) . sort_heuristic_ok f
 ``,
-FULL_SIMP_TAC std_ss [heuristic_ok_def] THEN
+FULL_SIMP_TAC std_ss [sort_heuristic_ok_def] THEN
 Induct_on `list` THEN1 (EVAL_TAC THEN DECIDE_TAC) THEN
 REPEAT STRIP_TAC THEN
 FULL_SIMP_TAC bool_ss [heuristic_sort_def] THEN
@@ -485,12 +485,12 @@ FULL_SIMP_TAC bool_ss [heuristic_sort_def] THEN
 METIS_TAC [])
 
 
-val highest_degree_def = Define `
-    (highest_degree (_, []) = 0) /\
-    (highest_degree (r, (x::xs)) = (highest_degree (r, xs)) + 1)
+val vertex_degree_def = Define `
+    (vertex_degree (_, []) = 0) /\
+    (vertex_degree (r, (x::xs)) = (vertex_degree (r, xs)) + 1)
 `
 
-val highest_degree_correctness = prove(``heuristic_ok highest_degree``,
+val highest_degree_correctness = prove(``sort_heuristic_ok vertex_degree``,
     METIS_TAC [all_heuristic_sorts_ok])
 
 
