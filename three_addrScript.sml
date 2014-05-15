@@ -117,7 +117,6 @@ val get_live_instr_def = Define `
 
 val test = EVAL ``get_live [Inst 1 2 3; Inst 0 1 2] [0]``
 
-(* only live variables matter *)
 
 val MEM_insert = prove(
   ``MEM x (insert y ys) = MEM x (y::ys)``,
@@ -796,6 +795,29 @@ val compute_preferences_def = Define `
         add_preference_pair (source, dest) (compute_preferences code)) /\
     (compute_preferences (_::code) = compute_preferences code)
 `
+
+(* Function to remove identity moves after register allocation *)
+val remove_identity_moves_def = Define `
+    (remove_identity_moves [] = []) /\
+    (remove_identity_moves ((Instr Move d s v)::code) =
+        if (d = s) then (remove_identity_moves code)
+	else ((Instr Move d s v)::(remove_identity_moves code))) /\
+    (remove_identity_moves (instr::code) = instr::(remove_identity_moves code))
+`
+
+val remove_identity_moves_correct = prove(``
+! s code live .
+eval_instr s code = eval_instr s (remove_identity_moves code)
+``,
+Induct_on `code` THEN1 (EVAL_TAC THEN DECIDE_TAC) THEN
+REPEAT STRIP_TAC THEN
+Cases_on `h` THEN
+Cases_on `o'` THEN1 (EVAL_TAC THEN METIS_TAC []) THEN
+EVAL_TAC THEN
+Cases_on `n = n0` THEN1 FULL_SIMP_TAC bool_ss [APPLY_UPDATE_ID] THEN
+FULL_SIMP_TAC bool_ss [] THEN
+EVAL_TAC)
+
 
 
 (*
