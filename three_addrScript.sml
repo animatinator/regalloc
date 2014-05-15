@@ -8,6 +8,12 @@ val _ = new_theory "three_addr";
 (* type of instruction *)
 
 val _ = Hol_datatype `
+  op = Op of num->num->num | Move`
+
+val _ = Hol_datatype `
+  instr = Instr of op => num => num => num`
+
+val _ = Hol_datatype `
   inst = Inst of num => num => num `
 
 (* semantics of instruction evaluation *)
@@ -17,11 +23,26 @@ val eval_def = Define `
   (eval f s ((Inst w r1 r2)::code) =
      eval f ((w =+ f (s r1) (s r2)) s) code)`;
 
+val eval_op_def = Define `
+  (eval_op (Op f) = f) /\
+  (eval_op (Move) = (\x1 x2 . x1))`
+
+val eval_instr_def = Define `
+  (eval_instr s [] = s) /\
+  (eval_instr s ((Instr op w r1 r2)::code) =
+     let f = (eval_op op) in
+       eval_instr ((w =+ f (s r1) (s r2)) s) code)`;
+
 (* apply a colouring to a set of instructions *)
 val apply_def = Define `
     (apply c [] = []) /\
-    (apply c ((Inst w r1 r2)::code) = (Inst (c w) (c r1) (c r2))::(apply c code))
-`
+    (apply c ((Inst w r1 r2)::code) = (Inst (c w) (c r1) (c r2))
+    	   ::(apply c code))`
+
+val apply_instr_def = Define `
+    (apply_instr c [] = []) /\
+    (apply_instr c ((Instr op w r1 r2)::code) = (Instr op (c w) (c r1) (c r2))
+    	   ::(apply_instr c code))`
 
 (* helper functions *)
 
@@ -83,6 +104,13 @@ val get_live_def = Define `
   (get_live [] live = live) /\
   (get_live ((Inst w r1 r2)::code) live =
      insert r1 (insert r2 (delete w (get_live code live))))`;
+
+val get_live_instr_def = Define `
+  (get_live_instr [] live = live) /\
+  (get_live_instr ((Instr (Op f) w r1 r2)::code) live =
+    insert r1 (insert r2 (delete w (get_live_instr code live)))) /\
+  (get_live_instr ((Instr (Move) w r1 r2)::code) live =
+    insert r1 (delete w (get_live_instr code live)))`;
 
 
 (* test *)
@@ -752,6 +780,22 @@ val colouring_ok_IMP_eval_apply = store_thm("colouring_ok_IMP_eval_apply",
   THEN Cases_on `n = e` THEN FULL_SIMP_TAC std_ss []
   THEN FULL_SIMP_TAC std_ss [no_dead_code_def, colouring_ok_def]
   THEN IMP_RES_TAC colouring_ok_injective)
+
+
+(* Function computing a preference graph for a block of code *)
+val add_preference_pair_def = Define `
+    (add_preference_pair (x:num, y:num) prefs =
+        let xs = (prefs x) in
+	let ys = (prefs y) in
+	    (x =+ (y::xs)) ((y =+ (x::ys)) prefs))
+`
+
+val compute_preferences_def = Define `
+    (compute_preferences [] = \x.[]) /\
+    (compute_preferences ((Instr Move dest source _)::code) =
+        add_preference_pair (source, dest) (compute_preferences code)) /\
+    (compute_preferences (_::code) = compute_preferences code)
+`
 
 
 (*
