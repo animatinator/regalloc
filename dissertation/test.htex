@@ -20,6 +20,11 @@ Here are some theorems:
   \HOLthm{three_addr.colouring_ok_IMP_eval_apply}
 \end{alltt}
 
+Something from colouring:
+\begin{alltt}\small
+  \HOLthm{colouring.satisfactory_colouring_is_ok}
+\end{alltt}
+
 To learn more, see the \emph{Embedding HOL in Latex}
 Section of the HOL Description.
 

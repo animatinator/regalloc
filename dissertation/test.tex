@@ -25,6 +25,13 @@ Here are some theorems:
     \HOLConst{MAP} (\HOLConst{eval} \HOLFreeVar{f} \HOLFreeVar{t} (\HOLConst{apply} \HOLFreeVar{c} \HOLFreeVar{code}) o \HOLFreeVar{c}) \HOLFreeVar{live})
 \end{alltt}
 
+Something from colouring:
+\begin{alltt}\small
+  \HOLTokenTurnstile{} \HOLConst{duplicate_free} \HOLFreeVar{live} \HOLTokenImp{}
+   \HOLConst{colouring_satisfactory} \HOLFreeVar{c} (\HOLConst{get_conflicts} \HOLFreeVar{code} \HOLFreeVar{live}) \HOLTokenImp{}
+   \HOLConst{colouring_ok_alt} \HOLFreeVar{c} \HOLFreeVar{code} \HOLFreeVar{live}
+\end{alltt}
+
 To learn more, see the \emph{Embedding HOL in Latex}
 Section of the HOL Description.
 

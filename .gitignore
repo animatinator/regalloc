@@ -12,3 +12,6 @@
 *.log
 *.sty
 *.aux
+*.lof
+*.lot
+*.toc
