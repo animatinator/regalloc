@@ -1,0 +1,26 @@
+\documentclass[12pt]{article}
+\usepackage{holtexbasic}
+\usepackage{alltt}
+\begin{document}
+
+\section*{A few tests}
+
+Here are some types and terms:
+\begin{alltt}\small
+  \HOLtm{:num}
+  \HOLtm{:'a}
+  \HOLtm{n+1}
+  \HOLtm[>>7]{[1;2;3;n;m+1]}
+  \HOLtm[tt]{P(SUC n) /\ q}
+\end{alltt}
+
+Here are some theorems:
+\begin{alltt}\small
+  \HOLthm{three_addr.eval_get_live}
+  \HOLthm{three_addr.colouring_ok_IMP_eval_apply}
+\end{alltt}
+
+To learn more, see the \emph{Embedding HOL in Latex}
+Section of the HOL Description.
+
+\end{document}

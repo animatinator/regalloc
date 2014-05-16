@@ -8,3 +8,7 @@
 *heap
 *~
 *.bat
+*.exe
+*.log
+*.sty
+*.aux

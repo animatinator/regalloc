@@ -1,0 +1,31 @@
+\documentclass[12pt]{article}
+\usepackage{holtexbasic}
+\usepackage{alltt}
+\begin{document}
+
+\section*{A few tests}
+
+Here are some types and terms:
+\begin{alltt}\small
+  \HOLinline{(:\HOLTyOp{num})}
+  \HOLinline{(:\ensuremath{\alpha})}
+  \HOLinline{\HOLFreeVar{n} + 1}
+  \HOLinline{       [1; 2; 3; \HOLFreeVar{n}; \HOLFreeVar{m} + 1]}
+  \HOLinline{\HOLFreeVar{P} (\HOLConst{SUC} \HOLFreeVar{n}) \HOLTokenConj{} \HOLFreeVar{q}}
+\end{alltt}
+
+Here are some theorems:
+\begin{alltt}\small
+  \HOLTokenTurnstile{} (\HOLConst{MAP} \HOLFreeVar{s} (\HOLConst{get_live} \HOLFreeVar{code} \HOLFreeVar{live}) = \HOLConst{MAP} \HOLFreeVar{t} (\HOLConst{get_live} \HOLFreeVar{code} \HOLFreeVar{live})) \HOLTokenImp{}
+   (\HOLConst{MAP} (\HOLConst{eval} \HOLFreeVar{f} \HOLFreeVar{s} \HOLFreeVar{code}) \HOLFreeVar{live} = \HOLConst{MAP} (\HOLConst{eval} \HOLFreeVar{f} \HOLFreeVar{t} \HOLFreeVar{code}) \HOLFreeVar{live})
+  \HOLTokenTurnstile{} \HOLConst{colouring_ok} \HOLFreeVar{c} \HOLFreeVar{code} \HOLFreeVar{live} \HOLTokenConj{} \HOLConst{no_dead_code} \HOLFreeVar{code} \HOLFreeVar{live} \HOLTokenConj{}
+   (\HOLConst{MAP} \HOLFreeVar{s} (\HOLConst{get_live} \HOLFreeVar{code} \HOLFreeVar{live}) =
+    \HOLConst{MAP} (\HOLFreeVar{t} o \HOLFreeVar{c}) (\HOLConst{get_live} \HOLFreeVar{code} \HOLFreeVar{live})) \HOLTokenImp{}
+   (\HOLConst{MAP} (\HOLConst{eval} \HOLFreeVar{f} \HOLFreeVar{s} \HOLFreeVar{code}) \HOLFreeVar{live} =
+    \HOLConst{MAP} (\HOLConst{eval} \HOLFreeVar{f} \HOLFreeVar{t} (\HOLConst{apply} \HOLFreeVar{c} \HOLFreeVar{code}) o \HOLFreeVar{c}) \HOLFreeVar{live})
+\end{alltt}
+
+To learn more, see the \emph{Embedding HOL in Latex}
+Section of the HOL Description.
+
+\end{document}

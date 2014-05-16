@@ -835,14 +835,37 @@ val _ = Hol_datatype `
     spill_inst = Load of num=>num | Store of num=>num
     | ThreeAddr of num=>num=>num`
 
+val merge_def = Define `
+    (merge (r, s) K = (\x . if x >= K then s x else r x))
+`
+
+val split_def = Define `
+    (split r K =
+    ((\x . if x < K then r x else 0), (\x . if x >= K then r x else 0)))
+`
+
+val eval_stack_def = Define `
+    (eval_stack f r s K [] = merge (r, s) K) /\
+    (eval_stack f r s K ((Load reg mem)::code) =
+    		eval_stack f ((reg =+ s mem) r) s K code) /\
+    (eval_stack f r s K ((Store mem reg)::code) =
+    		eval_stack f r ((mem =+ r reg) s) K code) /\
+    (eval_stack f r s K ((ThreeAddr w r1 r2)::code) =
+    		eval_stack f ((w =+ f (r r1) (r r2)) r) s K code)
+`
+
 (* Make sure the result of an instruction goes to a temporary variable which is
 then stored in memory *)
 val spill_stores_def = Define `
     (spill_stores K [] = []) /\
     (spill_stores K ((ThreeAddr w r1 r2)::code) =
     if w >= K then (ThreeAddr K r1 r2)::(Store w K)::(spill_stores K code)
-    else (ThreeAddr w r1 r2)::(spill_stores K code))`
+    else (ThreeAddr w r1 r2)::(spill_stores K code)) /\
+    (spill_stores K ((Load d s)::code) = (Load d s)::(spill_stores K code)) /\
+    (spill_stores K ((Store d s)::code) = (Store d s)::(spill_stores K code))`
 
+(* Ensure registers which are spilled to memory are loaded to temporaries
+before use *)
 val spill_loads_def = Define `
     (spill_loads K [] = []) /\
     (spill_loads K ((Inst w r1 r2)::code) =
@@ -855,6 +878,69 @@ val spill_loads_def = Define `
        (Load (K+2) r2)::(ThreeAddr w r1 (K+2))::(spill_loads K code)
     else (ThreeAddr w r1 r2)::(spill_loads K code))
 `
+
+val spill_loads_stores_def = Define `
+    (spill_loads_stores K code = spill_stores K (spill_loads K code))
+`
+
+val merge_split_identity = prove(``
+! s K . merge (split s K) K = s
+``,
+EVAL_TAC THEN
+REPEAT STRIP_TAC THEN
+FULL_SIMP_TAC arith_ss [] THEN
+METIS_TAC [])
+
+val split_store_equality = prove(``
+! s (x:num) (K:num) .
+s = (\x . if (x >= K) then (s x) else if (x < K) then (s x) else 0)
+``,
+REPEAT STRIP_TAC THEN
+Tactical.REVERSE (
+`!x . s x = (\x . if (x >= K') then (s x) else if (x < K') then (s x) else 0) x`
+	by ALL_TAC) THEN1 IMP_RES_TAC EQ_EXT THEN
+REPEAT STRIP_TAC THEN
+Cases_on `x >= K'` THEN1 (EVAL_TAC THEN FULL_SIMP_TAC bool_ss []) THEN
+EVAL_TAC THEN FULL_SIMP_TAC arith_ss [])
+
+val split_correctness = prove(``
+! s K r m .
+(split s K = (r, m)) ==>
+(! x . x >= K ==> (m x = s x)) /\
+(! x . x < K ==> (r x = s x))
+``,
+REPEAT STRIP_TAC THEN
+FULL_SIMP_TAC std_ss [split_def] THEN
+METIS_TAC [])
+
+(*``
+! f code s1 s2 K r m .
+((split s1 K) = (r, m)) ==>
+(eval f s1 code = eval_stack f r m K (spill_loads_stores K code))
+``
+Induct_on `code` THEN1 (
+	  EVAL_TAC THEN FULL_SIMP_TAC bool_ss []
+	  	   THEN METIS_TAC [split_store_equality]) THEN
+REPEAT STRIP_TAC THEN
+Cases_on `h` THEN
+EVAL_TAC THEN
+Cases_on `n0 >= K'` THEN1 (
+	 FULL_SIMP_TAC bool_ss [] THEN
+	 Cases_on `n1 >= K'` THEN1 (
+	 	  FULL_SIMP_TAC bool_ss [] THEN
+		  EVAL_TAC THEN
+		  Cases_on `n >= K'` THEN1 (
+		  	   FULL_SIMP_TAC bool_ss [] THEN
+			   EVAL_TAC THEN
+			   FULL_SIMP_TAC arith_ss [] THEN
+			   cheat
+		  ) THEN
+		  FULL_SIMP_TAC arith_ss [] THEN
+		  EVAL_TAC THEN
+		  FULL_SIMP_TAC arith_ss []
+	 )
+)*)
+	   
 
 
 val _ = export_theory();
