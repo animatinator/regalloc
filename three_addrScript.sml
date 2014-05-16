@@ -14,7 +14,7 @@ val _ = Hol_datatype `
   instr = Instr of op => num => num => num`
 
 val _ = Hol_datatype `
-  inst = Inst of num => num => num `
+  inst = Inst of num => num => num`
 
 (* semantics of instruction evaluation *)
 
@@ -781,7 +781,8 @@ val colouring_ok_IMP_eval_apply = store_thm("colouring_ok_IMP_eval_apply",
   THEN IMP_RES_TAC colouring_ok_injective)
 
 
-(* Function computing a preference graph for a block of code *)
+(* Functions for computing a preference graph for a block of code *)
+(* Add a pair of registers to each other's preferences *)
 val add_preference_pair_def = Define `
     (add_preference_pair (x:num, y:num) prefs =
         let xs = (prefs x) in
@@ -789,6 +790,7 @@ val add_preference_pair_def = Define `
 	    (x =+ (y::xs)) ((y =+ (x::ys)) prefs))
 `
 
+(* Compute the preference graph for a block of code *)
 val compute_preferences_def = Define `
     (compute_preferences [] = \x.[]) /\
     (compute_preferences ((Instr Move dest source _)::code) =
@@ -819,91 +821,40 @@ FULL_SIMP_TAC bool_ss [] THEN
 EVAL_TAC)
 
 
-
-(*
-(* Spilling function for when there are only 'k' physical registers available -
-spill registers outside of the bound by placing them in the N+ range *)
-val spill_high_registers_def = Define `
-    (spill_high_registers c k N =
-    			  (\r . if ((c r) >= k) then ((c r) + N) else (c r)))
-`
-
-
-val duplicate_free_after_spilling = prove(``
-! c k N list .
-duplicate_free (MAP c list) /\ k < N
-==>
-duplicate_free (MAP (spill_high_registers c k N) list)
-``,
-REPEAT STRIP_TAC THEN
-
-`! x y . x < LENGTH (MAP c list) /\ y < LENGTH (MAP c list) /\ x <> y
-==> EL x (MAP c list) <> EL y (MAP c list)`
-    by METIS_TAC [duplicate_free_means_none_equal] THEN
-
-`LENGTH (MAP (\r . if c r >= k then c r + 1000 else c r) list)
-	= LENGTH (MAP c list)` by METIS_TAC [LENGTH_MAP] THEN
-Tactical.REVERSE (`! x y . x < LENGTH (MAP c list) /\ y < LENGTH (MAP c list) /\ x <> y
-==> EL x (MAP (\r . if c r >= k then c r + 1000 else c r) list)
-<> EL y (MAP (\r . if c r >= k then c r + 1000 else c r) list)` by ALL_TAC)
-   THEN1 METIS_TAC [duplicate_free_if_none_equal] THEN
-REPEAT STRIP_TAC THEN
-
-`EL x (MAP c list) <> EL y (MAP c list)` by METIS_TAC [] THEN
-(* TODO: Can this be used to show the elements aren't equal when the map is the
-one with the branch? *)
-cheat)
-
-
-val colouring_ok_after_spilling = prove(``
-! c k code live .
-colouring_ok_alt c code live
-==>
-colouring_ok_alt (spill_high_registers c k) code live
-``,
-Induct_on `code` THEN1
-	  (EVAL_TAC THEN METIS_TAC [duplicate_free_after_spilling]) THEN
-REPEAT STRIP_TAC THEN
-Cases_on `h` THEN
-FULL_SIMP_TAC bool_ss [colouring_ok_alt_def,
-        colouring_respects_conflicting_sets_def, conflicting_sets_def] THEN
-FULL_SIMP_TAC bool_ss [spill_high_registers_def] THEN
-METIS_TAC [duplicate_free_after_spilling])
+(* Register spilling
+The approach used is to check where a register is greater than or equal to K,
+the number of available registers, and if it is to generate a load or store
+as appropriate. If it is an output register, generate a store, and if it is an
+input register, generate a load. Three temporary registers are allocated at
+K, K+1 and K+2 for output and two inputs; these should be used for instructions
+where an input or output has been spilled.
 *)
 
+(* Output code type with load and store instructions *)
+val _ = Hol_datatype `
+    spill_inst = Load of num=>num | Store of num=>num
+    | ThreeAddr of num=>num=>num`
 
-(* Different approach - will define spill_high_registers as a function applied
-to the result of the colouring, and show that it maintains duplicate-freeness *)
-val spill_def = Define `
-    (spill x = x + 1000)
+(* Make sure the result of an instruction goes to a temporary variable which is
+then stored in memory *)
+val spill_stores_def = Define `
+    (spill_stores K [] = []) /\
+    (spill_stores K ((ThreeAddr w r1 r2)::code) =
+    if w >= K then (ThreeAddr K r1 r2)::(Store w K)::(spill_stores K code)
+    else (ThreeAddr w r1 r2)::(spill_stores K code))`
+
+val spill_loads_def = Define `
+    (spill_loads K [] = []) /\
+    (spill_loads K ((Inst w r1 r2)::code) =
+    if (r1 >= K /\ r2 >= K) then
+       (Load (K+1) r1)::(Load (K+2) r2)::(ThreeAddr w (K+1) (K+2))
+       	     ::(spill_loads K code)
+    else if (r1 >= K) then
+       (Load (K+1) r1)::(ThreeAddr w (K+1) r2)::(spill_loads K code)
+    else if (r2 >= K) then
+       (Load (K+2) r2)::(ThreeAddr w r1 (K+2))::(spill_loads K code)
+    else (ThreeAddr w r1 r2)::(spill_loads K code))
 `
-
-val spill_high_registers_def = Define `
-    (spill_high_registers k = (\x . if x >= k then (spill x) else x))
-`
-
-val injective_def = Define `
-    (injective f = !x y . (f x = f y) ==> (x = y))
-`
-
-(* Something like this: *)
-val injective_preserves_duplicate_freeness = prove(``
-! list f .
-  (duplicate_free list) /\ (injective f)
-  ==> duplicate_free (MAP f list)
-``,
-Induct_on `list` THEN1 (EVAL_TAC THEN DECIDE_TAC) THEN
-REPEAT STRIP_TAC THEN
-EVAL_TAC THEN
-FULL_SIMP_TAC std_ss [duplicate_free_def] THEN
-FULL_SIMP_TAC std_ss [injective_def] THEN
-FULL_SIMP_TAC std_ss [MEM_MAP] THEN
-STRIP_TAC THEN
-Cases_on `h = y` THEN1 METIS_TAC [] THEN
-METIS_TAC [])
-
-(* Then show that applying it to only some elements still yields
-duplicate-freeness *)
 
 
 val _ = export_theory();
