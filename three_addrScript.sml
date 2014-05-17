@@ -53,7 +53,7 @@ val delete_def = Define `
   delete x xs = FILTER (\y. x <> y) xs`;
 
 (* proofs about helper functions *)
-val insert_works = prove(``
+val insert_works = store_thm("insert_works", ``
 ! x list . MEM x (insert x list)
 ``,
 Induct_on `list` THEN1 (EVAL_TAC THEN DECIDE_TAC) THEN
@@ -64,7 +64,8 @@ FULL_SIMP_TAC bool_ss [] THEN
 METIS_TAC [MEM])
 
 (* X is not a member of a list which has all things equal to it filtered out *)
-val member_of_filtered_list = prove(``
+val member_of_filtered_list = store_thm("member_of_filtered_list",
+``
     ! x list . ~(MEM x (FILTER (\ y . x <> y) list))
 ``,
 Induct_on `list` THEN1 (EVAL_TAC THEN DECIDE_TAC) THEN
@@ -79,7 +80,7 @@ val delete_works = store_thm("delete_works",
 ! x list . ~(MEM x (delete x list))
 ``, FULL_SIMP_TAC bool_ss [delete_def, member_of_filtered_list])
 
-val mem_insert = prove(``
+val mem_insert = store_thm("mem_insert", ``
 ! x y list .
     MEM x (insert y list) /\ x <> y ==> MEM x list
 ``,
@@ -124,7 +125,8 @@ val MEM_insert = prove(
 
 val MEM_inserted_item = prove(``MEM x (insert x xs)``, SIMP_TAC std_ss [MEM_insert, MEM]);
 
-val MEM_after_insertion = prove(``MEM x xs ==> MEM x (insert y xs)``, SRW_TAC [] [insert_def]);
+val MEM_after_insertion = store_thm("mem_after_insertion",
+``MEM x xs ==> MEM x (insert y xs)``, SRW_TAC [] [insert_def]);
 
 val not_mem_after_insertion = store_thm("not_mem_after_insertion",
 ``
@@ -573,7 +575,8 @@ proving that a 'satisfactory' colouring will satisfy colouring_ok *)
 
 (* If a list of lists is being filtered for whether they contain x, and x is
 in 'list', 'list' is in the result. *)
-val filter_by_membership = prove(``
+val filter_by_membership = store_thm("filter_by_membership",
+``
 ! list lists x .
 MEM list lists /\ MEM x list ==> MEM list (FILTER (\list . MEM x list) lists)
 ``,
