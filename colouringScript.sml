@@ -262,7 +262,8 @@ METIS_TAC [APPLY_UPDATE_THM])
 (* If only one value 'x' maps to a particular output value 'n', mapping the
 function over a list which does not contain x will give a list not containing
 n *)
-val map_output_only_contains_values_mapped_from_inputs = prove(``
+val map_output_only_contains_values_mapped_from_inputs = store_thm(
+	"map_output_only_contains_values_mapped_from_inputs", ``
 ! x list f n .
 ~(MEM x list) /\ (! y . (y <> x) ==> (f y <> n))
 ==>
@@ -277,7 +278,8 @@ METIS_TAC [])
 
 
 
-val input_unaffected_by_unrelated_update = prove(``
+val input_unaffected_by_unrelated_update = store_thm(
+	"input_unaffected_by_unrelated_update", ``
 (((q =+ n) f) h <> (f h))
 ==> (h = q)
 ``,
@@ -286,7 +288,8 @@ Cases_on `h = q` THEN1 FULL_SIMP_TAC bool_ss [] THEN
 `((q =+ n) f) h = f h` by EVAL_TAC THEN
 FULL_SIMP_TAC bool_ss [])
 
-val output_cannot_exist_without_being_mapped_to = prove(``
+val output_cannot_exist_without_being_mapped_to = store_thm(
+	"output_cannot_exist_without_being_mapped_to", ``
 ! f x list n q .
 (~(MEM (f x) (MAP f list)) /\ (f x <> n))
 ==> ~(MEM (f x) (MAP ((q =+ n) f) list))
@@ -303,7 +306,8 @@ METIS_TAC [])
 
 (* Updating a satisfactory colouring with a value unused by any register
 yields another satisfactory colouring *)
-val colouring_satisfactory_after_update = prove(``
+val colouring_satisfactory_after_update = store_thm(
+	"colouring_satisfactory_after_update", ``
 ! (c:num->num) (cs:(num # num list) list) (q:num) (n:num) .
   (graph_edge_lists_well_formed cs) /\
   colouring_satisfactory c cs /\ (! x . c x <> n)
@@ -340,7 +344,8 @@ METIS_TAC [output_cannot_exist_without_being_mapped_to])
 
 (* A naive colouring is still satisfactory if it is updated with a value
 unused by any register *)
-val naive_colouring_satisfactory_with_unused_value = prove(``
+val naive_colouring_satisfactory_with_unused_value = store_thm(
+	"naive_colouring_satisfactory_with_unused_value", ``
 ! n cs q.
 graph_edge_lists_well_formed cs /\
 (colouring_satisfactory (naive_colouring_aux cs (n+1)) cs)
@@ -353,7 +358,8 @@ REPEAT STRIP_TAC THEN
 METIS_TAC [colouring_satisfactory_after_update])
 
 
-val map_doesnt_contain_unused_values = prove(``
+val map_doesnt_contain_unused_values = store_thm(
+	"map_doesnt_contain_unused_values", ``
     ! list f n .
     (!x . f x <> n) ==> ~(MEM n (MAP f list))
 ``,
@@ -363,7 +369,8 @@ REPEAT STRIP_TAC THEN
 FULL_SIMP_TAC std_ss [MAP, MEM] THEN
 METIS_TAC [])
 
-val naive_colouring_aux_satisfactory = prove(``
+val naive_colouring_aux_satisfactory = store_thm(
+	"naive_colouring_aux_satisfactory", ``
 !(cs:(num # num list) list) .
 graph_edge_lists_well_formed cs ==>
 (! n . colouring_satisfactory (naive_colouring_aux cs n) cs)
@@ -393,7 +400,8 @@ THEN
 THEN METIS_TAC [naive_colouring_satisfactory_with_unused_value])
 
 
-val naive_colouring_aux_satisfactory_implication = prove(``
+val naive_colouring_aux_satisfactory_implication = store_thm(
+	"naive_colouring_aux_satisfactory_implication", ``
 ! (cs : (num # num list) list) .
 (! (n:num) . colouring_satisfactory
     (naive_colouring_aux cs n) cs)
@@ -404,7 +412,8 @@ Cases_on `cs` THEN1 EVAL_TAC THEN
 Cases_on `h` THEN
 FULL_SIMP_TAC bool_ss [naive_colouring_def])
 
-val naive_colouring_satisfactory = prove(``
+val naive_colouring_satisfactory = store_thm(
+	"naive_colouring_satisfactory", ``
 !(cs:(num # num list) list) .
 	  graph_edge_lists_well_formed cs ==>
 	  colouring_satisfactory (naive_colouring cs) cs
@@ -440,7 +449,8 @@ val sort_heuristic_ok_def = Define `
     ! (list:(num # num list) list) . set (heuristic_sort f list) = set (list))
 `
 
-val sort_heuristic_ok_IMP_heuristic_application_ok = prove(``
+val sort_heuristic_ok_IMP_heuristic_application_ok = store_thm(
+	"sort_heuristic_ok_IMP_heuristic_application_ok", ``
 ! f . sort_heuristic_ok f ==> heuristic_application_ok (heuristic_sort f)
 ``,
 REPEAT STRIP_TAC THEN
@@ -457,7 +467,8 @@ FULL_SIMP_TAC bool_ss [] THEN
 EVAL_TAC THEN METIS_TAC [])
 
 
-val set_after_heuristic_insert = prove(``
+val set_after_heuristic_insert = store_thm("set_after_heuristic_insert",
+``
 ! f h list .
 set (heuristic_insert f h list) = {h} UNION (set list)
 ``,
@@ -477,7 +488,8 @@ by METIS_TAC [INSERT_SING_UNION, UNION_EMPTY, UNION_ASSOC, UNION_COMM] THEN
 METIS_TAC [])
 
 
-val all_heuristic_sorts_ok = prove(``
+val all_heuristic_sorts_ok = store_thm("all_heuristic_sorts_ok",
+``
 ! (f:(num # num list)->num) . sort_heuristic_ok f
 ``,
 FULL_SIMP_TAC std_ss [sort_heuristic_ok_def] THEN
@@ -498,8 +510,8 @@ val vertex_degree_def = Define `
     (vertex_degree (r, (x::xs)) = (vertex_degree (r, xs)) + 1)
 `
 
-val highest_degree_correctness = prove(``sort_heuristic_ok vertex_degree``,
-    METIS_TAC [all_heuristic_sorts_ok])
+val highest_degree_correctness = store_thm("highest_degree_correctness",
+``sort_heuristic_ok vertex_degree``, METIS_TAC [all_heuristic_sorts_ok])
 
 
 (* Heuristic which selects the vertex with lowest degree in the subgraph of
@@ -599,7 +611,8 @@ val list_max = Define `
     (if x > tail then x else tail))
 `
 
-val list_max_is_largest = prove(``
+val list_max_is_largest = store_thm("list_max_is_largest",
+``
     ! x list . MEM x list ==> (x <= list_max list)
 ``,
 Induct_on `list` THEN1 (EVAL_TAC THEN DECIDE_TAC) THEN
@@ -630,7 +643,8 @@ FULL_SIMP_TAC arith_ss [])
 val smallest_nonmember_ind = DB.fetch "-" "smallest_nonmember_ind";
 
 
-val smallest_nonmember_is_not_member = prove(``
+val smallest_nonmember_is_not_member = store_thm(
+	"smallest_nonmember_is_not_member", ``
 ! n list . ~(MEM (smallest_nonmember n list) list)
 ``,
 recInduct smallest_nonmember_ind THEN
@@ -646,7 +660,8 @@ val lowest_available_colour_def = Define `
     (lowest_available_colour (col:num->num) cs =
     			     smallest_nonmember 0 (MAP col cs))
 `
-val lowest_available_colour_is_valid = prove(``
+val lowest_available_colour_is_valid = store_thm(
+	"lowest_available_colour_is_valid", ``
 ! col cs . ~(MEM (lowest_available_colour col cs) (MAP col cs))
 ``,
 FULL_SIMP_TAC bool_ss [lowest_available_colour_def] THEN
@@ -678,7 +693,8 @@ What I'm trying to do with this lemma is show that if the first goal holds of
 (as intuitively (r, rs) should capture all the registers r clashes with, but
 I'm not sure how to formalise this).
 *)
-val new_colour_satisfactory_if_constraints_satisfied = prove(``
+val new_colour_satisfactory_if_constraints_satisfied = store_thm(
+	"new_colour_satisfactory_if_constraints_satisfied", ``
 ! (n:num) (r:num) (col:num->num) (rs:num list) (cs: (num # num list) list) .
 (~(MEM n (MAP ((r =+ n) col) rs)) /\ (colouring_satisfactory col cs))
 ==>
@@ -690,7 +706,8 @@ FULL_SIMP_TAC bool_ss [] THEN
 cheat)
 
 
-val lowest_first_colouring_satisfactory = prove(``
+val lowest_first_colouring_satisfactory = store_thm(
+	"lowest_first_colouring_satisfactory", ``
 ! cs .
   graph_edge_lists_well_formed cs ==>
   colouring_satisfactory (lowest_first_colouring cs) cs
@@ -743,7 +760,8 @@ val lowest_first_preference_colouring_def = Define `
 
 
 (* Lowest-first colouring with a preference graph is satisfactory *)
-val lowest_first_preference_colouring_satisfactory = prove(``
+val lowest_first_preference_colouring_satisfactory = store_thm(
+	"lowest_first_preference_colouring_satisfactory", ``
 ! cs prefs .
   graph_edge_lists_well_formed cs ==>
   colouring_satisfactory (lowest_first_preference_colouring cs prefs) cs
