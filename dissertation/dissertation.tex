@@ -2,6 +2,8 @@
 %% Dissertation
 %% 
 
+%% ’ - find-replace these quotes as they break things
+
 
 \documentclass[a4paper,12pt,twoside,openright]{report}
 
@@ -222,7 +224,7 @@ representation of three-address code and an evaluation function were developed a
 algorithm to generate clash graphs was verified. This chapter explores the representation
 used, the way `colouring' registers was represented and the development and verification
 of the clash graph generator, along with the way a `correct' register allocation was defined.
-The proofs showing that these definitions are correct and linking them to the project’s overall
+The proofs showing that these definitions are correct and linking them to the project's overall
 goal will follow in Chapter (TODO: bringing everything together).
 
 \section{Three-address code representation}
@@ -316,7 +318,7 @@ fundamental to the rest of the project.
 \subsection{Set representation and proofs}
 
 As mentioned, it was decided that for the purposes of the project it would be most
-convenient to represent sets as lists rather than using HOL’s set primitives. Using
+convenient to represent sets as lists rather than using HOL's set primitives. Using
 lists made it considerably easier to define functions iterating over elements of a set,
 and made many of the proofs and definitions a lot easier to work with. Furthermore,
 lists allow for an ordering to exist, which was particularly useful when applying
@@ -394,7 +396,7 @@ Again, a completeness proof was required for later proofs. This is given below:
 
 The proof used the same technique as the last one, combined with the fact that the union of two lists contains all elements from both lists (as was just proved).
 
-This completes the basic definitions and proofs for list-based sets. An intersection operation was not required for the sets used, as there was no function in the algorithm which used it. Additionally, only completeness of unions was required -- interestingly, it was not necessary to prove that they didn’t introduce any extra elements for any later proofs. This is a side-effect of all live variable analysis methods generally computing safe over-approximations: an algorithm which satisfies an overly large set of conflicts will automatically satisfy a smaller, more precise set.
+This completes the basic definitions and proofs for list-based sets. An intersection operation was not required for the sets used, as there was no function in the algorithm which used it. Additionally, only completeness of unions was required -- interestingly, it was not necessary to prove that they didn't introduce any extra elements for any later proofs. This is a side-effect of all live variable analysis methods generally computing safe over-approximations: an algorithm which satisfies an overly large set of conflicts will automatically satisfy a smaller, more precise set.
 
 \subsection{Live variable analysis}
 
@@ -413,7 +415,7 @@ This is an implementation of the liveness equation given in Section (TODO backgr
    (\HOLConst{MAP} (\HOLConst{eval} \HOLFreeVar{f} \HOLFreeVar{s} \HOLFreeVar{code}) \HOLFreeVar{live} = \HOLConst{MAP} (\HOLConst{eval} \HOLFreeVar{f} \HOLFreeVar{t} \HOLFreeVar{code}) \HOLFreeVar{live})
 \end{alltt}
 
-The antecedent states that the two stores $s$ and $t$ agree on the variables which are live at the start of the code. The consequent then claims that the stores at the end of the program’s evaluation will agree on whatever variables are designated as live at the end. The proof of this statement is fairly complex, and is (TODO write up proof).
+The antecedent states that the two stores $s$ and $t$ agree on the variables which are live at the start of the code. The consequent then claims that the stores at the end of the program's evaluation will agree on whatever variables are designated as live at the end. The proof of this statement is fairly complex, and is (TODO write up proof).
 
 \subsection{Defining correctness of a colouring}
 
@@ -521,7 +523,7 @@ The alternative colouring_ok definition was designed to be slightly more abstrac
 \HOLConst{colouring_respects_conflicting_sets} \HOLFreeVar{c} \HOLFreeVar{ss}
 \end{alltt}
 
-This can also be conveniently expressed using HOL’s \texttt{EVERY} function, as shown in the following theorem:
+This can also be conveniently expressed using HOL's \texttt{EVERY} function, as shown in the following theorem:
 
 \begin{alltt}\small
 	\HOLTokenTurnstile{} \HOLConst{colouring_respects_conflicting_sets} \HOLFreeVar{c} \HOLFreeVar{sets} \HOLTokenEquiv{}
@@ -600,7 +602,7 @@ The goal then follows as the flattening union function and deletion both preserv
 
 \subsubsection{Constructing the graph}
 
-Once the function to determine a register’s conflicts had been defined, the function to construct the whole graph was fairly simple to construct:
+Once the function to determine a register's conflicts had been defined, the function to construct the whole graph was fairly simple to construct:
 
 \begin{alltt}\small
 	\HOLConst{get_conflicts} \HOLFreeVar{code} \HOLFreeVar{live} =
@@ -629,7 +631,7 @@ Note that this is trivially duplicate-free where $live$ is duplicate-free, becau
 
 \subsubsection{Proof of correctness}
 
-This section contains the necessary proofs demonstrating that the clash graph generator works as it should. Three properties were shown: registers not included in the results of \texttt{get\_registers} do not feature in any program instruction, in \texttt{get\_live} or in any conflicting set (and so no vertices are missing from the graph), registers do not conflict with themselves, and any pair of registers in the same conflicting set will appear in each other’s list of conflicts. These theorems are revisited later in Section (TODO bringing it all together), where they are used to help connect the graph colouring proofs to the proofs about code and prove the overall goal of the project.
+This section contains the necessary proofs demonstrating that the clash graph generator works as it should. Three properties were shown: registers not included in the results of \texttt{get\_registers} do not feature in any program instruction, in \texttt{get\_live} or in any conflicting set (and so no vertices are missing from the graph), registers do not conflict with themselves, and any pair of registers in the same conflicting set will appear in each other's list of conflicts. These theorems are revisited later in Section (TODO bringing it all together), where they are used to help connect the graph colouring proofs to the proofs about code and prove the overall goal of the project.
 
 The first thing to prove was that registers not included in \texttt{get\_registers} are never used in any program instruction:
 
@@ -656,7 +658,7 @@ Using the above two theorems, it was possible to prove that an unused register d
    \HOLFreeVar{r} \HOLTokenNotIn{} \HOLConst{set} \HOLFreeVar{set}
 \end{alltt}
 
-A consequence of the last theorem is that evaluating \texttt{get\_conflicts} on an unused register will yield the empty list, a property which allows us to specify definitions over all registers without caring about those which don’t get used in the code. This useful property is given below:
+A consequence of the last theorem is that evaluating \texttt{get\_conflicts} on an unused register will yield the empty list, a property which allows us to specify definitions over all registers without caring about those which don't get used in the code. This useful property is given below:
 
 \begin{alltt}\small
 	\HOLTokenTurnstile{} \HOLFreeVar{r} \HOLTokenNotIn{} \HOLConst{set} (\HOLConst{get_registers} \HOLFreeVar{code} \HOLFreeVar{live}) \HOLTokenImp{}
@@ -701,7 +703,7 @@ This concludes the proof of correctness of the clash graph generator. These theo
 
 \section*{Introduction}
 
-The core verification task of this project is, of course, to prove the correctness of the algorithms that perform the register allocation. In this chapter the focus is on the algorithms and heuristics used to colour clash graphs, how correctness was modelled and how it was verified for the algorithms used. In the interests of having a minimal algorithm verified early on, a simple colouring algorithm which simply assigned each vertex its own colour was verified first. The next objective was to verify an algorithm which re-uses old colours wherever possible by assigning to each vertex the lowest register which doesn’t conflict with its neighbours. From there, the work focussed on extra heuristics which could improve the performance of the lowest-first greedy algorithm by considering vertices in a different order.
+The core verification task of this project is, of course, to prove the correctness of the algorithms that perform the register allocation. In this chapter the focus is on the algorithms and heuristics used to colour clash graphs, how correctness was modelled and how it was verified for the algorithms used. In the interests of having a minimal algorithm verified early on, a simple colouring algorithm which simply assigned each vertex its own colour was verified first. The next objective was to verify an algorithm which re-uses old colours wherever possible by assigning to each vertex the lowest register which doesn't conflict with its neighbours. From there, the work focussed on extra heuristics which could improve the performance of the lowest-first greedy algorithm by considering vertices in a different order.
 
 \section{Modelling colouring correctness}
 
@@ -810,7 +812,7 @@ The second main lemma specifies that updating the mapped value of a function $f$
 	\HOLTokenTurnstile{} \HOLFreeVar{x} \HOLTokenNotIn{} \HOLConst{set} \HOLFreeVar{list} \HOLTokenImp{} (\HOLConst{MAP} ((\HOLFreeVar{x} =+ \HOLFreeVar{n}) \HOLFreeVar{f}) \HOLFreeVar{list} = \HOLConst{MAP} \HOLFreeVar{f} \HOLFreeVar{list})
 \end{alltt}
 
-This was proved by inducting on the list and showing that the function's update couldn’t affect any element. From this a useful lemma for updating \texttt{naive\_colouring\_aux} was deduced, stating that colouring an unused vertex will not affect the result of applying the colouring:
+This was proved by inducting on the list and showing that the function's update couldn't affect any element. From this a useful lemma for updating \texttt{naive\_colouring\_aux} was deduced, stating that colouring an unused vertex will not affect the result of applying the colouring:
 
 \begin{alltt}\small
 	\HOLTokenTurnstile{} \HOLFreeVar{q} \HOLTokenNotIn{} \HOLConst{set} \HOLFreeVar{r} \HOLTokenImp{}
@@ -910,26 +912,363 @@ Thus the verification of \texttt{naive\_colouring\_aux} is complete, and by the 
 
 \section{Lowest-first colouring}
 
+The lowest-first algorithm is an improvement over naive colouring which allows colours to be re-used where possible. Essentially, the function examines the vertices of the graph in an arbitrary order and assigns to each the lowest possible colour which does not conflict with the colours already assigned to any of its neighbours. This section explores the definition of this function and the proof of correctness, again using \texttt{colouring\_satisfactory} as the verification condition.
+
 \subsection{The algorithm}
+
+The main algorithm is fairly simple: to colour a particular vertex, colour all those after it in the list and then find the lowest colour which doesn't conflict with the colours that have been assigned to its neighbours. The definition is given here:
+
+\begin{alltt}\small
+	\HOLConst{lowest_first_colouring} [] = (\HOLTokenLambda{}\HOLBoundVar{x}. 0)
+\HOLConst{lowest_first_colouring} ((\HOLFreeVar{r},\HOLFreeVar{rs})::\HOLFreeVar{cs}) =
+(\HOLKeyword{let} \HOLBoundVar{col} = \HOLConst{lowest_first_colouring} \HOLFreeVar{cs} \HOLKeyword{in}
+ \HOLKeyword{let} \HOLBoundVar{lowest\HOLTokenUnderscore{}available} = \HOLConst{lowest_available_colour} \HOLBoundVar{col} \HOLFreeVar{rs}
+ \HOLKeyword{in}
+   (\HOLFreeVar{r} =+ \HOLBoundVar{lowest\HOLTokenUnderscore{}available}) \HOLBoundVar{col})
+\end{alltt}
+
+The function \texttt{lowest\_available\_colour} is fairly self-explanatory:
+
+\begin{alltt}\small
+	\HOLConst{lowest_available_colour} \HOLFreeVar{col} \HOLFreeVar{cs} =
+\HOLConst{smallest_nonmember} 0 (\HOLConst{MAP} \HOLFreeVar{col} \HOLFreeVar{cs})
+\end{alltt}
+
+This uses the auxiliary function \texttt{smallest\_nonmember}, which begins from the starting value $x$ and increments until it is not a member of the supplied list, returning the first non-member. The definition is supplied below:
+
+\begin{alltt}\small
+	\HOLConst{smallest_nonmember} \HOLFreeVar{x} \HOLFreeVar{list} =
+\HOLKeyword{if} \HOLConst{MEM} \HOLFreeVar{x} \HOLFreeVar{list} \HOLKeyword{then} \HOLConst{smallest_nonmember} (\HOLFreeVar{x} + 1) \HOLFreeVar{list} \HOLKeyword{else} \HOLFreeVar{x}
+\end{alltt}
 
 \subsubsection{Termination of \texttt{smallest\_nonmember}}
 
+The \texttt{smallest\_nonmember} function's termination is non-trivial, and so had to proved separately. The approach used was to show that each recursive iteration decreased the distance between the smallest nonmember value and the maximum value of the list, found using the following function:
+
+\begin{alltt}\small
+	\HOLConst{list_max} [] = 0
+\HOLConst{list_max} (\HOLFreeVar{x}::\HOLFreeVar{xs}) =
+(\HOLKeyword{let} \HOLBoundVar{tail} = \HOLConst{list_max} \HOLFreeVar{xs} \HOLKeyword{in} \HOLKeyword{if} \HOLFreeVar{x} \HOLTokenGt{} \HOLBoundVar{tail} \HOLKeyword{then} \HOLFreeVar{x} \HOLKeyword{else} \HOLBoundVar{tail})
+\end{alltt}
+
+To make the proof easier, the following lemma showing that the maximum of a list is indeed its maximum was proved by induction:
+
+\begin{alltt}\small
+	\HOLTokenTurnstile{} \HOLConst{MEM} \HOLFreeVar{x} \HOLFreeVar{list} \HOLTokenImp{} \HOLFreeVar{x} \HOLTokenLeq{} \HOLConst{list_max} \HOLFreeVar{list}
+\end{alltt}
+
+It is fairly simple to show that as the value to be returned is incremented on each recursion, it will continuously move towards the maximum of the list, and so termination of \texttt{smallest\_nonmember} can now be proved using a relation which subtracts the value of $x$ from the maximum of the list.
+
 \subsection{Correctness proof}
+
+AAs for the naive colouring, the proof of correctness depends on showing two things: the colour selected for a new vertex will not conflict with any of its neighbours, and the updated colouring will be valid for all vertices whose colours have already been assigned. The first of these amounts to proving that the value returned by \texttt{smallest\_nonmember} is indeed not a member:
+
+\begin{alltt}\small
+	\HOLTokenTurnstile{} \HOLConst{smallest_nonmember} \HOLFreeVar{n} \HOLFreeVar{list} \HOLTokenNotIn{} \HOLConst{set} \HOLFreeVar{list}
+\end{alltt}
+
+The proof is trivial, using the following custom induction rule generated for \texttt{smallest\_nonmember} and case-splitting on whether $x$ is a member of the list:
+
+\begin{alltt}\small
+	\HOLTokenTurnstile{} (\HOLTokenForall{}\HOLBoundVar{x} \HOLBoundVar{list}. (\HOLConst{MEM} \HOLBoundVar{x} \HOLBoundVar{list} \HOLTokenImp{} \HOLFreeVar{P} (\HOLBoundVar{x} + 1) \HOLBoundVar{list}) \HOLTokenImp{} \HOLFreeVar{P} \HOLBoundVar{x} \HOLBoundVar{list}) \HOLTokenImp{}
+   \HOLTokenForall{}\HOLBoundVar{v} \HOLBoundVar{v\sb{\mathrm{1}}}. \HOLFreeVar{P} \HOLBoundVar{v} \HOLBoundVar{v\sb{\mathrm{1}}}
+\end{alltt}
+
+It is now possible to show that the value selected by \texttt{lowest\_available\_colour} is valid given the set of constraints:
+
+\begin{alltt}\small
+	\HOLTokenTurnstile{} \HOLConst{lowest_available_colour} \HOLFreeVar{col} \HOLFreeVar{cs} \HOLTokenNotIn{} \HOLConst{set} (\HOLConst{MAP} \HOLFreeVar{col} \HOLFreeVar{cs})
+\end{alltt}
+
+The proof follows by expanding the definition of \texttt{lowest\_available\_colour} and using the previous lemma.
+
+The following lemma was also useful in the proof. It claims that if a colouring update is valid for the current vertex's set of conflicts, and the colouring was valid for all other vertices before updating, then the updated colouring will be valid for all other vertices:
+
+\begin{alltt}\small
+	\HOLTokenTurnstile{} \HOLFreeVar{n} \HOLTokenNotIn{} \HOLConst{set} (\HOLConst{MAP} ((\HOLFreeVar{r} =+ \HOLFreeVar{n}) \HOLFreeVar{col}) \HOLFreeVar{rs}) \HOLTokenConj{}
+   \HOLConst{colouring_satisfactory} \HOLFreeVar{col} \HOLFreeVar{cs} \HOLTokenImp{}
+   \HOLConst{colouring_satisfactory} ((\HOLFreeVar{r} =+ \HOLFreeVar{n}) \HOLFreeVar{col}) ((\HOLFreeVar{r},\HOLFreeVar{rs})::\HOLFreeVar{cs})
+\end{alltt}
+
+This intuitively follows from the fact that the list of conflicts for a vertex $v$ should include all vertices which also have $v$ in their conflict lists -- that is, the conflict list for $v$ captures all conflicts it is part of. This covers the second part of the proof, and makes it possible to complete the proof of the algorithm's correctness:
+
+\begin{alltt}\small
+	\HOLTokenTurnstile{} \HOLConst{graph_edge_lists_well_formed} \HOLFreeVar{cs} \HOLTokenImp{}
+   \HOLConst{colouring_satisfactory} (\HOLConst{lowest_first_colouring} \HOLFreeVar{cs}) \HOLFreeVar{cs}
+\end{alltt}
+
+The lowest-first colouring algorithm is therefore correct with respect to \texttt{colouring\_satisfactory}. This is a reasonably good algorithm, but it is still fairly simplistic. In the next section, various heuristics which can further improve performance will be explored.
 
 \section{Heuristics}
 
+The two algorithms developed so far work reasonably well in practice, but can be greatly improved with extra heuristics. These heuristics are used to control the order in which vertices are considered by the colouring algorithm, so that particular vertices are prioritised and others are left as late as possible. In this section the approach to modelling heuristics is explored, and a few real heuristics are examined and verified.
+
 \subsection{Modelling heuristics}
+
+A convenient approach to heuristics, inspired by (TODO ref), is to break the overall algorithm into two steps. The first of these re-orders the list of vertices in the clash graph according to some heuristic, and the second is a colouring stage such as the lowest-first algorithm verified in the last section. This means that a heuristic is correct if and only if the set of vertices after applying the heuristic is the same as the set before. Clash graphs have no duplicate vertices (this follows from the proof that the list of all registers is duplicate-free, given in Section (TODO)), and so converting the set list into a set to test this property will not lose information. This notion is captured succinctly by the following definition:
+
+\begin{alltt}\small
+	\HOLConst{heuristic_application_ok} \HOLFreeVar{f} \HOLTokenEquiv{} \HOLTokenForall{}\HOLBoundVar{list}. \HOLConst{set} (\HOLFreeVar{f} \HOLBoundVar{list}) = \HOLConst{set} \HOLBoundVar{list}
+\end{alltt}
 
 \subsection{Simple sort-based heuristics}
 
+The simplest kind of heuristic is one which simply sorts elements based on some property -- for instance, a highest-degree-first ordering. This was modelled as a sort with a function passed in which computes the value of this property. The relevant definitions are as follows:
+
+\begin{alltt}\small
+	\HOLConst{heuristic_insert} \HOLFreeVar{f} \HOLFreeVar{x} [] = [\HOLFreeVar{x}]
+\HOLConst{heuristic_insert} \HOLFreeVar{f} \HOLFreeVar{x} (\HOLFreeVar{y}::\HOLFreeVar{ys}) =
+\HOLKeyword{if} \HOLFreeVar{f} \HOLFreeVar{x} \HOLTokenGt{} \HOLFreeVar{f} \HOLFreeVar{y} \HOLKeyword{then} \HOLFreeVar{x}::\HOLFreeVar{y}::\HOLFreeVar{ys} \HOLKeyword{else} \HOLFreeVar{y}::\HOLConst{heuristic_insert} \HOLFreeVar{f} \HOLFreeVar{x} \HOLFreeVar{ys}
+	\HOLConst{heuristic_sort} \HOLFreeVar{f} [] = []
+\HOLConst{heuristic_sort} \HOLFreeVar{f} (\HOLFreeVar{x}::\HOLFreeVar{xs}) =
+\HOLConst{heuristic_insert} \HOLFreeVar{f} \HOLFreeVar{x} (\HOLConst{heuristic_sort} \HOLFreeVar{f} \HOLFreeVar{xs})
+\end{alltt}
+
+These implement a simple insertion sort, where \texttt{heuristic\_insert} performs the insertion and \texttt{heuristic\_sort} inserts each element into the list one by one.
+
+To make it easier to verify heuristics based on this approach, a more specific definition of correctness was added:
+
+\begin{alltt}\small
+	\HOLConst{sort_heuristic_ok} \HOLFreeVar{f} \HOLTokenEquiv{}
+\HOLTokenForall{}\HOLBoundVar{list}. \HOLConst{set} (\HOLConst{heuristic_sort} \HOLFreeVar{f} \HOLBoundVar{list}) = \HOLConst{set} \HOLBoundVar{list}
+\end{alltt}
+
+This verifies that sorting with a particular function maintains the members of the original set. This clearly implies the usual definition of heuristic correctness:
+
+\begin{alltt}\small
+	\HOLTokenTurnstile{} \HOLConst{sort_heuristic_ok} \HOLFreeVar{f} \HOLTokenImp{}
+   \HOLConst{heuristic_application_ok} (\HOLConst{heuristic_sort} \HOLFreeVar{f})
+\end{alltt}
+
+The proof follows trivially once the definitions of \texttt{sort\_heuristic\_ok} and \texttt{heuristic\_application\_ok} are expanded.
+
+Intuitively, if this holds for any function $f$ then it should hold for \textit{all} such functions. To prove this, we first verify that \texttt{heuristic\_insert} adds elements to the set correctly:
+
+\begin{alltt}\small
+	\HOLTokenTurnstile{} \HOLConst{set} (\HOLConst{heuristic_insert} \HOLFreeVar{f} \HOLFreeVar{h} \HOLFreeVar{list}) = \HOLTokenLeftbrace{}\HOLFreeVar{h}\HOLTokenRightbrace{} \HOLTokenUnion{} \HOLConst{set} \HOLFreeVar{list}
+\end{alltt}
+
+This can be proved by induction on the size of the list set to be inserted into, case splitting on whether the element to be inserted will be inserted at the current position or later. It can be used to verify that all sort-based heuristics satisfy \texttt{sort\_heuristic\_ok}, and therefore \texttt{heuristic\_application\_ok} by the implication proved earlier:
+
+\begin{alltt}\small
+	\HOLTokenTurnstile{} \HOLConst{sort_heuristic_ok} \HOLFreeVar{f}
+\end{alltt}
+
+The proof follows from the correctness of \texttt{heuristic\_insert} by inducting on the size of the list and rearranging set operations using the standard HOL set theory definitions.
+
+As a simple example, consider the following heuristic function which calculates the degree of a vertex:
+
+\begin{alltt}\small
+	\HOLConst{vertex_degree} (\HOLFreeVar{v\sb{\mathrm{0}}},[]) = 0
+\HOLConst{vertex_degree} (\HOLFreeVar{r},\HOLFreeVar{x}::\HOLFreeVar{xs}) = \HOLConst{vertex_degree} (\HOLFreeVar{r},\HOLFreeVar{xs}) + 1
+\end{alltt}
+
+Using this as the sort function with \texttt{heuristic\_sort} will sort vertices according to degree, a common heuristic used when colouring graphs. Its correctness now follows trivially from the theorems proved above.
+
+Many other sort-based heuristics are possible. For instance, if only a finite number of registers are available (a situation which is explored in Section (TODO extensions - finite registers)), we might want to prioritise registers which are frequently accessed for register storage and spill those which are used less often. In this case, the clash graph generator could simply tag vertices with the number of times they are accessed in the code, and this could be used in a heuristic sort to order vertices according to how often they are accessed.
+
 \subsection{More complex heuristics}
 
-
+TODO
 
 
 \chapter{Bringing everything together}
 
-TODO
+In this chapter, the properties verified of the algorithms developed in previous chapters are used to produce an overall proof of correctness for the whole algorithm. The result of this is a high-level proof which shows that applying these register allocation algorithms to a piece of code will yield code with exactly the same evaluation behaviour.
+
+This consists of three main proofs. The first shows that graphs generated by the clash graph generator possess the properties assumed by the colouring algorithms, the second shows that the definition of correctness used for colouring algorithms implies the correctness required for correct evaluation, and the third shows that a colouring satisfying the correctness used for evaluation leads to code whose evaluation behaviour is unchanged.
+
+\section{Linking code correctness to graph correctness}
+
+This section demonstrates that graphs generated by the clash graph generator have the necessary properties assumed by the colouring algorithms, and that a colouring deemed correct with respect to \texttt{colouring\_satisfactory} will also satisfy \texttt{colouring\_ok}. As all colouring algorithms were verified using \texttt{colouring\_satisfactory}, this indicates that they also satisfy \texttt{colouring\_ok} and therefore that the full algorithm generates colourings satisfying \texttt{colouring\_ok} for any code block.
+
+\subsection{Correctness of generated graphs}
+
+For the proofs about graph colouring correctness to be useful, it was necessary to show that the graphs being generated and passed in have the right well-formedness properties -- recall the definitions:
+
+\begin{alltt}\small
+	\HOLConst{edge_list_well_formed} (\HOLFreeVar{v},\HOLFreeVar{edges}) \HOLTokenEquiv{}
+\HOLFreeVar{v} \HOLTokenNotIn{} \HOLConst{set} \HOLFreeVar{edges} \HOLTokenConj{} \HOLConst{duplicate_free} \HOLFreeVar{edges}
+	\HOLConst{graph_edge_lists_well_formed} \HOLFreeVar{es} \HOLTokenEquiv{}
+\HOLConst{EVERY} (\HOLTokenLambda{}\HOLBoundVar{x}. \HOLConst{edge_list_well_formed} \HOLBoundVar{x}) \HOLFreeVar{es}
+\end{alltt}
+
+Thus the statement to be proved is as follows:
+
+\begin{alltt}\small
+	\HOLTokenTurnstile{} \HOLConst{duplicate_free} \HOLFreeVar{live} \HOLTokenImp{}
+   \HOLConst{graph_edge_lists_well_formed} (\HOLConst{get_conflicts} \HOLFreeVar{code} \HOLFreeVar{live})
+\end{alltt}
+
+We first prove a simpler version of this, which states that the edge list for one vertex is well-formed:
+
+\begin{alltt}\small
+	\HOLTokenTurnstile{} \HOLConst{duplicate_free} \HOLFreeVar{live} \HOLTokenImp{}
+   \HOLConst{edge_list_well_formed} (\HOLFreeVar{r},\HOLConst{conflicts_for_register} \HOLFreeVar{r} \HOLFreeVar{code} \HOLFreeVar{live})
+\end{alltt}
+
+From the definition, we can see that this requires that a register does not appear in its own list of conflicts, and that the list of conflicts is duplicate-free. These two things were proven as lemmas in Section (TODO clash graph generation from conflicting sets):
+
+\begin{alltt}\small
+	\HOLTokenTurnstile{} \HOLFreeVar{r} \HOLTokenNotIn{} \HOLConst{set} (\HOLConst{conflicts_for_register} \HOLFreeVar{r} \HOLFreeVar{code} \HOLFreeVar{live})
+	\HOLTokenTurnstile{} \HOLConst{duplicate_free} \HOLFreeVar{live} \HOLTokenImp{}
+   \HOLConst{duplicate_free} (\HOLConst{conflicts_for_register} \HOLFreeVar{r} \HOLFreeVar{code} \HOLFreeVar{live})
+\end{alltt}
+
+These two lemmas are sufficient to prove the simplified goal above. Now that generated graph edge lists have been proven to be individually well-formed, it is relatively simple to prove the original goal:
+
+\begin{alltt}\small
+	\HOLTokenTurnstile{} \HOLConst{duplicate_free} \HOLFreeVar{live} \HOLTokenImp{}
+   \HOLConst{graph_edge_lists_well_formed} (\HOLConst{get_conflicts} \HOLFreeVar{code} \HOLFreeVar{live})
+\end{alltt}
+
+The proof uses one more small lemma, which relates universal quantification of a property to HOL's EVERY function:
+
+\begin{alltt}\small
+	\HOLTokenTurnstile{} (\HOLTokenForall{}\HOLBoundVar{x}. \HOLFreeVar{P} (\HOLFreeVar{f} \HOLBoundVar{x})) \HOLTokenImp{} \HOLConst{EVERY} \HOLFreeVar{P} (\HOLConst{MAP} \HOLFreeVar{f} \HOLFreeVar{list})
+\end{alltt}
+
+The proof is a trivial induction. With this, the original goal can be proved by simplifying and using the above lemma to put the statement in the form used by the simplified goal.
+
+\subsection{Connecting \texttt{colouring_satisfactory} to \texttt{colouring_ok}}
+
+The next task in the proof was to show that \texttt{colouring\_satisfactory}, the definition of correctness used in verifying graph colouring algorithms, implies \texttt{colouring\_ok}, the definition used when working directly with code. For this it was much more convenient to use the definition \texttt{colouring\_ok\_alt}, which was proved equivalent to \texttt{colouring\_ok} in Section (TODO colouring_ok_alt_def same as colouring_ok_def). The statement to be proved is given below:
+
+\begin{alltt}\small
+	\HOLTokenTurnstile{} \HOLConst{duplicate_free} \HOLFreeVar{live} \HOLTokenImp{}
+   \HOLConst{colouring_satisfactory} \HOLFreeVar{c} (\HOLConst{get_conflicts} \HOLFreeVar{code} \HOLFreeVar{live}) \HOLTokenImp{}
+   \HOLConst{colouring_ok_alt} \HOLFreeVar{c} \HOLFreeVar{code} \HOLFreeVar{live}
+\end{alltt}
+
+This ended up being fairly complicated to prove. Initially, a slightly simpler goal was proved which would then be linked to the actual definitions to complete the original proof. The simpler goal is as follows:
+
+\begin{alltt}\small
+	\HOLTokenTurnstile{} \HOLConst{duplicate_free} \HOLFreeVar{live} \HOLTokenImp{}
+   (\HOLTokenForall{}\HOLBoundVar{r}.
+      \HOLFreeVar{col} \HOLBoundVar{r} \HOLTokenNotIn{}
+      \HOLConst{set} (\HOLConst{MAP} \HOLFreeVar{col} (\HOLConst{conflicts_for_register} \HOLBoundVar{r} \HOLFreeVar{code} \HOLFreeVar{live}))) \HOLTokenImp{}
+   \HOLConst{EVERY} (\HOLTokenLambda{}\HOLBoundVar{s}. \HOLConst{duplicate_free} (\HOLConst{MAP} \HOLFreeVar{col} \HOLBoundVar{s}))
+     (\HOLConst{conflicting_sets} \HOLFreeVar{code} \HOLFreeVar{live})
+\end{alltt}
+
+This takes the usual assumption that the set of variables specified as live at the end of the code block is duplicate-free. The antecedent here states that for any register $r$ and colouring $col$, applying the colouring to $r$ doesn't conflict with the set of conflicts for $r$ - the coloured $r$ is not a member of the set of conflicts with the colouring mapped over it. As will be demonstrated formally later, this is a consequence of the colouring being satisfactory for the conflicts generated by \texttt{get\_conflicts} - in fact, it is essentially a rephrasing of it. The consequent, meanwhile, states that mapping the colouring over any conflicting set yields a duplicate-free result. This is simply the definition of \texttt{colouring\_respects\_conflicting\_sets} restated using \texttt{EVERY}, and is therefore a restatement of \texttt{colouring\_ok\_alt}. As will be demonstrated later, this goal is sufficient to prove the original goal.
+
+The proof of this statement was fairly complex, making use of several of the lemmas proved earlier. The approach used was to use the following lemma from Section (TODO) to show duplicate-freeness of each conflicting set after colouring:
+
+\begin{alltt}\small
+	\HOLTokenTurnstile{} (\HOLTokenForall{}\HOLBoundVar{x} \HOLBoundVar{y}.
+      \HOLBoundVar{x} \HOLTokenLt{} \HOLConst{LENGTH} \HOLFreeVar{list} \HOLTokenConj{} \HOLBoundVar{y} \HOLTokenLt{} \HOLConst{LENGTH} \HOLFreeVar{list} \HOLTokenConj{} \HOLBoundVar{x} \HOLTokenNotEqual{} \HOLBoundVar{y} \HOLTokenImp{}
+      \HOLConst{EL} \HOLBoundVar{x} \HOLFreeVar{list} \HOLTokenNotEqual{} \HOLConst{EL} \HOLBoundVar{y} \HOLFreeVar{list}) \HOLTokenImp{}
+   \HOLConst{duplicate_free} \HOLFreeVar{list}
+\end{alltt}
+
+To prove the antecedent of this it was necessary to use several of the lemmas about duplicate-freeness of conflicting sets along with the fact that a list being duplicate-free means no elements are equal:
+
+\begin{alltt}\small
+	\HOLTokenTurnstile{} \HOLConst{duplicate_free} \HOLFreeVar{list} \HOLTokenConj{} \HOLFreeVar{x} \HOLTokenLt{} \HOLConst{LENGTH} \HOLFreeVar{list} \HOLTokenConj{} \HOLFreeVar{y} \HOLTokenLt{} \HOLConst{LENGTH} \HOLFreeVar{list} \HOLTokenConj{}
+   \HOLFreeVar{x} \HOLTokenNotEqual{} \HOLFreeVar{y} \HOLTokenImp{}
+   \HOLConst{EL} \HOLFreeVar{x} \HOLFreeVar{list} \HOLTokenNotEqual{} \HOLConst{EL} \HOLFreeVar{y} \HOLFreeVar{list}
+\end{alltt}
+
+The fact that a register's assigned colour is not assigned to any register in its conflicting set (from the antecedent of the overall goal) was then used to show that any two different registers cannot be the same after colouring, as required to show that the conflicting set after colouring is duplicate-free and complete the proof.
+
+This is almost enough to prove the original goal. The next key lemma proves that the antecedent of the last goal is indeed a consequence of a colouring being satisfactory:
+
+\begin{alltt}\small
+	\HOLTokenTurnstile{} \HOLConst{colouring_satisfactory} \HOLFreeVar{col} (\HOLConst{get_conflicts} \HOLFreeVar{code} \HOLFreeVar{live}) \HOLTokenImp{}
+   \HOLTokenForall{}\HOLBoundVar{r}.
+     \HOLFreeVar{col} \HOLBoundVar{r} \HOLTokenNotIn{} \HOLConst{set} (\HOLConst{MAP} \HOLFreeVar{col} (\HOLConst{conflicts_for_register} \HOLBoundVar{r} \HOLFreeVar{code} \HOLFreeVar{live}))
+\end{alltt}
+
+To verify this it was first necessary to show that a satisfactory colouring has the desired behaviour on a single vertex:
+
+[colouring_satisfactory_on_one_vertex]
+\begin{alltt}\small
+	\HOLTokenTurnstile{} \HOLConst{colouring_satisfactory} \HOLFreeVar{c} \HOLFreeVar{cs} \HOLTokenConj{} \HOLConst{MEM} (\HOLFreeVar{r},\HOLFreeVar{rs}) \HOLFreeVar{cs} \HOLTokenImp{}
+   \HOLFreeVar{c} \HOLFreeVar{r} \HOLTokenNotIn{} \HOLConst{set} (\HOLConst{MAP} \HOLFreeVar{c} \HOLFreeVar{rs})
+\end{alltt}
+
+The proof is a relatively simple induction where the goal follows from the definition of \texttt{colouring\_satisfactory}.
+
+Another small lemma was required, stating that if $x$ is a member of a list then for any colouring $c$, $c x$ is a member of the list after mapping $c$ over it:
+
+\begin{alltt}\small
+	\HOLTokenTurnstile{} \HOLConst{MEM} \HOLFreeVar{x} \HOLFreeVar{xs} \HOLTokenImp{} \HOLConst{MEM} (\HOLFreeVar{c} \HOLFreeVar{x}) (\HOLConst{MAP} \HOLFreeVar{c} \HOLFreeVar{xs})
+\end{alltt}
+
+The proof is trivial using simplification and evaluation, along with the HOL theorem \texttt{MEM_MAP}:
+
+\begin{alltt}\small
+	\HOLTokenTurnstile{} \HOLConst{MEM} \HOLFreeVar{x} (\HOLConst{MAP} \HOLFreeVar{f} \HOLFreeVar{l}) \HOLTokenEquiv{} \HOLTokenExists{}\HOLBoundVar{y}. (\HOLFreeVar{x} = \HOLFreeVar{f} \HOLBoundVar{y}) \HOLTokenConj{} \HOLConst{MEM} \HOLBoundVar{y} \HOLFreeVar{l}
+\end{alltt}
+
+Now the goal colouring_satisfactory_expansion can be verified. This makes use of the following lemma which was given in Section (TODO correctness of clash graphs), to avoid having to restrict the statement to registers which are used in the program:
+
+\begin{alltt}\small
+	\HOLTokenTurnstile{} \HOLFreeVar{r} \HOLTokenNotIn{} \HOLConst{set} (\HOLConst{get_registers} \HOLFreeVar{code} \HOLFreeVar{live}) \HOLTokenImp{}
+   (\HOLConst{conflicts_for_register} \HOLFreeVar{r} \HOLFreeVar{code} \HOLFreeVar{live} = [])
+\end{alltt}
+
+The proof works in essence by expanding out the definition of colouring_satisfactory showing that it means any $r$ must satisfy the goal of the statement, but this was fairly complex to prove due to the complexity of colouring_satisfactory and used several of the lemmas proved above.
+
+Thus we have verified that the antecedent of the overall goal implies the antecedent of \texttt{respecting\_register\_conflicts\_respects\_conflicing\_sets}. The full proof can now be derived using these lemmas, expanding the definition of \texttt{colouring\_ok\_alt} to make the goal match up to the consequent of \texttt{respecting\_register\_conflicts\_respects\_conflicting\_sets}.
+
+Therefore all colourings which satisfy colouring_satisfactory will also satisfy \texttt{colouring\_ok\_alt} and thus \texttt{colouring\_ok}. This gives a full end-to-end proof showing that the full register allocation algorithm generates a colouring which satisfies \texttt{colouring\_ok}. The remaining step in proving the project's overall goal is to show that a colouring satisfying \texttt{colouring\_ok} will not affect the behaviour of a block of code, and the proof of this is explained in the next section.
+
+\section{Overall proof of correctness}
+
+Now that the algorithm has been proven to generate colourings satisfying colouring_ok, it remains to show that colouring_ok is sufficient to prove that the code behaviour will be unchanged. This statement is as follows:
+
+\begin{alltt}\small
+	\HOLTokenTurnstile{} \HOLConst{colouring_ok} \HOLFreeVar{c} \HOLFreeVar{code} \HOLFreeVar{live} \HOLTokenConj{} \HOLConst{no_dead_code} \HOLFreeVar{code} \HOLFreeVar{live} \HOLTokenConj{}
+   (\HOLConst{MAP} \HOLFreeVar{s} (\HOLConst{get_live} \HOLFreeVar{code} \HOLFreeVar{live}) =
+    \HOLConst{MAP} (\HOLFreeVar{t} o \HOLFreeVar{c}) (\HOLConst{get_live} \HOLFreeVar{code} \HOLFreeVar{live})) \HOLTokenImp{}
+   (\HOLConst{MAP} (\HOLConst{eval} \HOLFreeVar{f} \HOLFreeVar{s} \HOLFreeVar{code}) \HOLFreeVar{live} =
+    \HOLConst{MAP} (\HOLConst{eval} \HOLFreeVar{f} \HOLFreeVar{t} (\HOLConst{apply} \HOLFreeVar{c} \HOLFreeVar{code}) o \HOLFreeVar{c}) \HOLFreeVar{live})
+\end{alltt}
+
+\subsection{The statement of correctness}
+
+There are three main components to the antecedent:
+
+\begin{itemize}
+	\item The colouring $c$ satisfies \texttt{colouring\_ok}
+	\item There is no dead code -- this will be discussed shortly, but essentially states that there aren't any instructions which modify non-live registers
+	\item The two stores $s$ and $t$ agree on the live variables. The second store $t$ is the store after register allocation, hence it is being composed with the colouring $c$ in the statement of store equality
+\end{itemize}
+
+The goal to be proved claims the equality of the store with and without colouring after the code has been evaluated. On the left side of the equality, the code is evaluated and the resulting store is mapped over the variables specified as live after the code has executed to get the results. On the right, the colouring is applied to the code and it is then evaluated with the store $t$ ($s$ after register allocation). This is then mapped over the coloured live variables by composing it with $c$ to obtain the equivalent results after colouring. The equality of these indicates that the results of evaluating the code are exactly the same before and after register allocation.
+
+\subsection{Dead code elimination}
+
+Before proving the correctness statement, it was necessary to define a function to eliminate dead code and verify its correctness with \texttt{no\_dead\_code}. The definition of \texttt{no\_dead\_code} is given below:
+
+\begin{alltt}\small
+	\HOLConst{no_dead_code} [] \HOLFreeVar{v\sb{\mathrm{0}}} \HOLTokenEquiv{} \HOLConst{T}
+\HOLConst{no_dead_code} (\HOLConst{Inst} \HOLFreeVar{w} \HOLFreeVar{r\sb{\mathrm{1}}} \HOLFreeVar{r\sb{\mathrm{2}}}::\HOLFreeVar{code}) \HOLFreeVar{live} \HOLTokenEquiv{}
+\HOLConst{MEM} \HOLFreeVar{w} (\HOLConst{get_live} \HOLFreeVar{code} \HOLFreeVar{live}) \HOLTokenConj{} \HOLConst{no_dead_code} \HOLFreeVar{code} \HOLFreeVar{live}
+\end{alltt}
+
+The dead code removal function was fairly simple to define, and is given below:
+
+\begin{alltt}\small
+	\HOLConst{remove_dead_code} [] \HOLFreeVar{live} = []
+\HOLConst{remove_dead_code} (\HOLConst{Inst} \HOLFreeVar{w} \HOLFreeVar{r\sb{\mathrm{1}}} \HOLFreeVar{r\sb{\mathrm{2}}}::\HOLFreeVar{code}) \HOLFreeVar{live} =
+(\HOLKeyword{let} \HOLBoundVar{newcode} = \HOLConst{remove_dead_code} \HOLFreeVar{code} \HOLFreeVar{live}
+ \HOLKeyword{in}
+   \HOLKeyword{if} \HOLConst{MEM} \HOLFreeVar{w} (\HOLConst{get_live} \HOLBoundVar{newcode} \HOLFreeVar{live}) \HOLKeyword{then} \HOLConst{Inst} \HOLFreeVar{w} \HOLFreeVar{r\sb{\mathrm{1}}} \HOLFreeVar{r\sb{\mathrm{2}}}::\HOLBoundVar{newcode}
+   \HOLKeyword{else} \HOLBoundVar{newcode})
+\end{alltt}
+
+The proof of correctness was relatively easy, using induction and case splitting on whether the current instruction is dead. The correctness statement is as follows:
+
+\begin{alltt}\small
+	\HOLTokenTurnstile{} \HOLConst{no_dead_code} (\HOLConst{remove_dead_code} \HOLFreeVar{code} \HOLFreeVar{live}) \HOLFreeVar{live}
+\end{alltt}
+
+\subsection{Lemmas}
+
+\subsection{Proof of correctness}
 
 
 \chapter{Extension features}
