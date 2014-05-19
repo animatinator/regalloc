@@ -588,9 +588,16 @@ METIS_TAC [QSORT_MEM, set_list_equality])
 (* Note: LIST_TO_SET_REVERSE will be handy for the following *)
 
 val acc_returned = prove(``
-! x list done acc .
+! done list acc .
 MEM x acc ==> MEM x (lowest_degree_subgraph_heuristic_aux done list acc)
 ``,
+recInduct lowest_degree_subgraph_heuristic_aux_ind THEN
+STRIP_TAC THEN1 (
+    FULL_SIMP_TAC std_ss [lowest_degree_subgraph_heuristic_aux_def] THEN
+    METIS_TAC [LIST_TO_SET_REVERSE]) THEN
+REPEAT STRIP_TAC THEN
+FULL_SIMP_TAC bool_ss [LET_DEF] THEN
+(* TODO *)
 cheat)
 
 val lowest_degree_subgraph_heuristic_aux_MEM = store_thm(
@@ -600,7 +607,10 @@ MEM x list \/ MEM x acc
 = MEM x (lowest_degree_subgraph_heuristic_aux done list acc)
 ``,
 recInduct lowest_degree_subgraph_heuristic_aux_ind THEN
-STRIP_TAC THEN1 (EVAL_TAC THEN cheat) THEN
+STRIP_TAC THEN1 (
+    FULL_SIMP_TAC bool_ss [lowest_degree_subgraph_heuristic_aux_def,
+        MEM] THEN
+    METIS_TAC [LIST_TO_SET_REVERSE]) THEN
 REPEAT STRIP_TAC THEN
 FULL_SIMP_TAC bool_ss [] THEN
 Cases_on `x = (r,rs)` THEN1 (
@@ -612,14 +622,15 @@ FULL_SIMP_TAC bool_ss [MEM] THEN
 Cases_on `MEM x cs` THEN1 (
 	 FULL_SIMP_TAC bool_ss [] THEN
 	 `MEM x (sort_not_considered_by_degree (r INSERT done) cs)`
-	      by cheat THEN
+	      by METIS_TAC [sort_not_considered_by_degree_ok] THEN
 	  FULL_SIMP_TAC bool_ss [lowest_degree_subgraph_heuristic_aux_def] THEN
 	  FULL_SIMP_TAC bool_ss [LET_DEF]) THEN
 FULL_SIMP_TAC bool_ss [] THEN
 STRIP_TAC THEN
 FULL_SIMP_TAC bool_ss [lowest_degree_subgraph_heuristic_aux_def] THEN
 FULL_SIMP_TAC bool_ss [LET_DEF] THEN
-`~(MEM x (sort_not_considered_by_degree (r INSERT done) cs))` by cheat)
+`~(MEM x (sort_not_considered_by_degree (r INSERT done) cs))`
+       by METIS_TAC [sort_not_considered_by_degree_ok])
 
 val lowest_degree_subgraph_heuristic_ok = store_thm(
     "lowest_degree_subgraph_heuristic_ok", ``
