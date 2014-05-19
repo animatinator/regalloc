@@ -1,6 +1,6 @@
 open HolKernel Parse boolLib bossLib;
 
-open arithmeticTheory listTheory combinTheory pairTheory
+open arithmeticTheory listTheory combinTheory pairTheory sortingTheory
      finite_mapTheory relationTheory optionTheory pred_setTheory;
 
 open three_addrTheory;
@@ -517,28 +517,37 @@ val highest_degree_correctness = store_thm("highest_degree_correctness",
 (* Heuristic which selects the vertex with lowest degree in the subgraph of
 vertices not considered each time *)
 
-(* Returns the first element of a given list of conflicts which has not been
-considered *)
-val first_not_considered_def = Define `
-    (first_not_considered done ((r, rs)::cs) = if (done r)
-    			  then (first_not_considered done cs)
-			  else (r, rs))
+(* Get the degree of a vertex ignoring those contained in the set 'done' *)
+val vertex_degree_in_subgraph_def = Define `
+    (vertex_degree_in_subgraph done (v, []) = 0) /\
+    (vertex_degree_in_subgraph done (v, (e::es)) =
+        if (done e) then (vertex_degree_in_subgraph done (v, es))
+	else SUC (vertex_degree_in_subgraph done (v, es)))
 `
 
 (* Sorts the list of conflicts according to degree in the subgraph where those
 already considered have been removed *)
-(* TODO *)
-val sort_not_considered_by_degree = Define `
+val sort_not_considered_by_degree_def = Define `
     (sort_not_considered_by_degree
-        (done:num->bool) (list:(num # num list) list) = list)
+        (done:num->bool) (list:(num # num list) list) =
+	QSORT (\ x y . (vertex_degree_in_subgraph done x)
+	      < (vertex_degree_in_subgraph done y) /\
+	      ~(done (FST x))) list)
 `
 
 (* The heuristic itself *)
+(* done is the list of vertices already considered, which are to be treated as
+having been removed from the graph. sort_not_considered_by_degree ignores
+vertices included in done *)
+(* cs' is the stack of vertices being build up, and is reversed at the end so it
+is considered in the correct order (colouring works back-to-front) *)
+(* Note that the algorithm assumes the list passed in as the second argument is
+sorted *)
 val lowest_degree_subgraph_heuristic_aux_def = tDefine
     "lowest_degree_subgraph_heuristic_aux" `
-    (lowest_degree_subgraph_heuristic_aux done [] cs' = cs') /\
+    (lowest_degree_subgraph_heuristic_aux done [] cs' = REVERSE cs') /\
     (lowest_degree_subgraph_heuristic_aux done ((r, rs)::cs) cs' =
-        let sorted = (sort_not_considered_by_degree done cs) in
+        let sorted = (sort_not_considered_by_degree (r INSERT done) cs) in
         lowest_degree_subgraph_heuristic_aux
 		(r INSERT done) sorted ((r, rs)::cs'))
 ` (WF_REL_TAC ` measure (\ (done, cs, cs') . LENGTH cs)` THEN
@@ -546,17 +555,79 @@ val lowest_degree_subgraph_heuristic_aux_def = tDefine
 LENGTH (cs)` by cheat THEN
 FULL_SIMP_TAC arith_ss [LENGTH])
 
+val lowest_degree_subgraph_heuristic_aux_ind = DB.fetch "-"
+    "lowest_degree_subgraph_heuristic_aux_ind"
+
 val lowest_degree_subgraph_heuristic_def = Define `
     (lowest_degree_subgraph_heuristic cs =
-        lowest_degree_subgraph_heuristic_aux (\x . F) cs [])
+        lowest_degree_subgraph_heuristic_aux (\x . F)
+	    (sort_not_considered_by_degree (\x . F) cs) [])
 `
+
+
+val set_list_equality = store_thm("set_list_equality",
+``
+! list list' .
+(! x . MEM x list = MEM x list') ==>
+(set list = set list')
+``,
+REPEAT STRIP_TAC THEN
+FULL_SIMP_TAC std_ss [SET_EQ_SUBSET] THEN
+STRIP_TAC THEN FULL_SIMP_TAC std_ss [SUBSET_DEF])
+
+val sort_not_considered_by_degree_ok = store_thm(
+    "sort_not_considered_by_degree_ok", ``
+! list done .
+set list = set (sort_not_considered_by_degree done list)
+``,
+REPEAT STRIP_TAC THEN
+FULL_SIMP_TAC bool_ss [sort_not_considered_by_degree_def] THEN
+METIS_TAC [QSORT_MEM, set_list_equality])
+
+
+(* Note: LIST_TO_SET_REVERSE will be handy for the following *)
+
+val acc_returned = prove(``
+! x list done acc .
+MEM x acc ==> MEM x (lowest_degree_subgraph_heuristic_aux done list acc)
+``,
+cheat)
+
+val lowest_degree_subgraph_heuristic_aux_MEM = store_thm(
+    "lowest_degree_subgraph_heuristic_aux_MEM", ``
+! done list acc .
+MEM x list \/ MEM x acc
+= MEM x (lowest_degree_subgraph_heuristic_aux done list acc)
+``,
+recInduct lowest_degree_subgraph_heuristic_aux_ind THEN
+STRIP_TAC THEN1 (EVAL_TAC THEN cheat) THEN
+REPEAT STRIP_TAC THEN
+FULL_SIMP_TAC bool_ss [] THEN
+Cases_on `x = (r,rs)` THEN1 (
+	 FULL_SIMP_TAC bool_ss [MEM] THEN
+	 FULL_SIMP_TAC bool_ss [lowest_degree_subgraph_heuristic_aux_def] THEN
+	 FULL_SIMP_TAC bool_ss [LET_DEF]) THEN
+Cases_on `MEM x cs'` THEN1 (METIS_TAC [acc_returned]) THEN
+FULL_SIMP_TAC bool_ss [MEM] THEN
+Cases_on `MEM x cs` THEN1 (
+	 FULL_SIMP_TAC bool_ss [] THEN
+	 `MEM x (sort_not_considered_by_degree (r INSERT done) cs)`
+	      by cheat THEN
+	  FULL_SIMP_TAC bool_ss [lowest_degree_subgraph_heuristic_aux_def] THEN
+	  FULL_SIMP_TAC bool_ss [LET_DEF]) THEN
+FULL_SIMP_TAC bool_ss [] THEN
+STRIP_TAC THEN
+FULL_SIMP_TAC bool_ss [lowest_degree_subgraph_heuristic_aux_def] THEN
+FULL_SIMP_TAC bool_ss [LET_DEF] THEN
+`~(MEM x (sort_not_considered_by_degree (r INSERT done) cs))` by cheat)
 
 
 val lowest_degree_subgraph_result_set = prove(``
 ! q r cs list done .
 set (lowest_degree_subgraph_heuristic_aux done list ((q,r)::cs)) =
 (q,r) INSERT set (lowest_degree_subgraph_heuristic_aux done list cs)
-``, cheat)
+``,
+cheat)
 
 val lowest_degree_subgraph_done = prove(``
 ! q cs list done .
@@ -569,7 +640,9 @@ val lowest_degree_subgraph_set_order_irrelevant = prove(``
 (set list = set list') ==>
 (set (lowest_degree_subgraph_heuristic_aux done list cs) =
 set (lowest_degree_subgraph_heuristic_aux done list' cs))
-``, cheat)
+``,
+cheat) (* Can't do this by induction. The top element of each set will be
+different and so the inductive hypothesis will be useless. *)
 
 val lowest_degree_subgraph_step = prove(``
 ! done h list cs' .
@@ -580,7 +653,8 @@ REPEAT STRIP_TAC THEN
 Cases_on `h` THEN
 FULL_SIMP_TAC bool_ss [lowest_degree_subgraph_heuristic_aux_def] THEN
 FULL_SIMP_TAC bool_ss [LET_DEF] THEN
-`set (sort_not_considered_by_degree done list) = set list` by cheat THEN
+`set (sort_not_considered_by_degree (q INSERT done) list) = set list`
+     by METIS_TAC [sort_not_considered_by_degree_ok] THEN
 METIS_TAC [lowest_degree_subgraph_result_set, lowest_degree_subgraph_done,
 lowest_degree_subgraph_set_order_irrelevant])
 
@@ -596,7 +670,10 @@ val lowest_degree_subgraph_heuristic_ok = prove(``
 heuristic_application_ok lowest_degree_subgraph_heuristic
 ``,
 FULL_SIMP_TAC std_ss [heuristic_application_ok_def, lowest_degree_subgraph_heuristic_def] THEN
-METIS_TAC [lowest_degree_subgraph_heuristic_aux_preserves_set])
+`! list . set list = set (sort_not_considered_by_degree (\x . F) list)`
+   by METIS_TAC [sort_not_considered_by_degree_ok] THEN
+METIS_TAC [lowest_degree_subgraph_heuristic_aux_preserves_set,
+	  lowest_degree_subgraph_set_order_irrelevant])
 
 
 
@@ -718,7 +795,7 @@ Cases_on `h` THEN
 `graph_edge_lists_well_formed cs`
         by METIS_TAC [graph_edge_lists_well_formed_def, EVERY_DEF] THEN
 `colouring_satisfactory (lowest_first_colouring cs) cs` by METIS_TAC [] THEN
-REVERSE (`~(MEM (lowest_available_colour (lowest_first_colouring cs) r)
+TACTICAL.REVERSE (`~(MEM (lowest_available_colour (lowest_first_colouring cs) r)
        (MAP ((q =+ lowest_available_colour (lowest_first_colouring cs) r)
        (lowest_first_colouring cs)) r))` by ALL_TAC) THEN1 (
        FULL_SIMP_TAC std_ss [lowest_first_colouring_def] THEN
@@ -795,7 +872,7 @@ FULL_SIMP_TAC bool_ss [] THEN
 (* TODO: This next thing is very similar to the thing proved earlier and also in
 the proof of lowest_first correctness - see if it can be extracted to a
 lemma? *)
-REVERSE (`~(MEM
+TACTICAL.REVERSE (`~(MEM
 (best_preference_colour
 	(lowest_first_preference_colouring cs prefs) r (prefs q))
 (MAP ((q =+
