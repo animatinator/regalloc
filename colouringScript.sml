@@ -621,59 +621,35 @@ FULL_SIMP_TAC bool_ss [lowest_degree_subgraph_heuristic_aux_def] THEN
 FULL_SIMP_TAC bool_ss [LET_DEF] THEN
 `~(MEM x (sort_not_considered_by_degree (r INSERT done) cs))` by cheat)
 
-
-val lowest_degree_subgraph_result_set = prove(``
-! q r cs list done .
-set (lowest_degree_subgraph_heuristic_aux done list ((q,r)::cs)) =
-(q,r) INSERT set (lowest_degree_subgraph_heuristic_aux done list cs)
-``,
-cheat)
-
-val lowest_degree_subgraph_done = prove(``
-! q cs list done .
-set (lowest_degree_subgraph_heuristic_aux (q INSERT done) list cs) =
-set (lowest_degree_subgraph_heuristic_aux done list cs)
-``, cheat)
-
-val lowest_degree_subgraph_set_order_irrelevant = prove(``
-! done list list' cs .
-(set list = set list') ==>
-(set (lowest_degree_subgraph_heuristic_aux done list cs) =
-set (lowest_degree_subgraph_heuristic_aux done list' cs))
-``,
-cheat) (* Can't do this by induction. The top element of each set will be
-different and so the inductive hypothesis will be useless. *)
-
-val lowest_degree_subgraph_step = prove(``
-! done h list cs' .
-set (lowest_degree_subgraph_heuristic_aux done (h::list) cs') =
-h INSERT (set (lowest_degree_subgraph_heuristic_aux done list cs'))
-``,
-REPEAT STRIP_TAC THEN
-Cases_on `h` THEN
-FULL_SIMP_TAC bool_ss [lowest_degree_subgraph_heuristic_aux_def] THEN
-FULL_SIMP_TAC bool_ss [LET_DEF] THEN
-`set (sort_not_considered_by_degree (q INSERT done) list) = set list`
-     by METIS_TAC [sort_not_considered_by_degree_ok] THEN
-METIS_TAC [lowest_degree_subgraph_result_set, lowest_degree_subgraph_done,
-lowest_degree_subgraph_set_order_irrelevant])
-
-val lowest_degree_subgraph_heuristic_aux_preserves_set = prove(``
-! list . set (lowest_degree_subgraph_heuristic_aux (\x.F) list []) = set list
-``,
-Induct_on `list` THEN1 EVAL_TAC THEN
-REPEAT STRIP_TAC THEN
-FULL_SIMP_TAC bool_ss [lowest_degree_subgraph_step] THEN
-METIS_TAC [LIST_TO_SET])
-
-val lowest_degree_subgraph_heuristic_ok = prove(``
+val lowest_degree_subgraph_heuristic_ok = store_thm(
+    "lowest_degree_subgraph_heuristic_ok", ``
 heuristic_application_ok lowest_degree_subgraph_heuristic
 ``,
-FULL_SIMP_TAC std_ss [heuristic_application_ok_def, lowest_degree_subgraph_heuristic_def] THEN
-`! list . set list = set (sort_not_considered_by_degree (\x . F) list)`
-   by METIS_TAC [sort_not_considered_by_degree_ok] THEN
-METIS_TAC [lowest_degree_subgraph_heuristic_aux_preserves_set,
-	  lowest_degree_subgraph_set_order_irrelevant])
+FULL_SIMP_TAC std_ss [heuristic_application_ok_def,
+	      lowest_degree_subgraph_heuristic_def] THEN
+REPEAT STRIP_TAC THEN
+`! x . MEM x (sort_not_considered_by_degree (\x. F) list)
+   = MEM x list` by cheat THEN
+`! x . MEM x (sort_not_considered_by_degree (\x. F) list) \/ MEM x []
+     = MEM x (lowest_degree_subgraph_heuristic_aux (\x. F)
+       (sort_not_considered_by_degree (\x. F) list) [])`
+    by METIS_TAC [lowest_degree_subgraph_heuristic_aux_MEM] THEN
+`! x . MEM x (sort_not_considered_by_degree (\x. F) list)
+    = MEM x (lowest_degree_subgraph_heuristic_aux (\x. F)
+       (sort_not_considered_by_degree (\x. F) list) [])` by ALL_TAC THEN1 (
+    REPEAT STRIP_TAC THEN
+    Cases_on `MEM x (sort_not_considered_by_degree (\x . F) list)` THEN1 (
+        FULL_SIMP_TAC bool_ss [] THEN
+	METIS_TAC []) THEN
+    FULL_SIMP_TAC bool_ss [] THEN
+    STRIP_TAC THEN
+    `MEM x (sort_not_considered_by_degree (\x. F) list) \/ MEM x []`
+    by METIS_TAC [] THEN
+    `~(MEM x [])` by METIS_TAC [MEM]) THEN
+`! x . MEM x (lowest_degree_subgraph_heuristic_aux (\x. F)
+         (sort_not_considered_by_degree (\x. F) list) [])
+    = MEM x list` by METIS_TAC [] THEN
+METIS_TAC [set_list_equality])
 
 
 
