@@ -565,6 +565,8 @@ val lowest_degree_subgraph_heuristic_def = Define `
 `
 
 
+(* Handy lemma regarding set equality: two sets made from lists are equal iff
+being a member of one list is equivalent to being a member of the other *)
 val set_list_equality = store_thm("set_list_equality",
 ``
 ! list list' .
@@ -575,6 +577,8 @@ REPEAT STRIP_TAC THEN
 FULL_SIMP_TAC std_ss [SET_EQ_SUBSET] THEN
 STRIP_TAC THEN FULL_SIMP_TAC std_ss [SUBSET_DEF])
 
+(* The function sort_not_considered_by_degree_ok maintains the set which is
+passed in *)
 val sort_not_considered_by_degree_ok = store_thm(
     "sort_not_considered_by_degree_ok", ``
 ! list done .
@@ -584,10 +588,9 @@ REPEAT STRIP_TAC THEN
 FULL_SIMP_TAC bool_ss [sort_not_considered_by_degree_def] THEN
 METIS_TAC [QSORT_MEM, set_list_equality])
 
-
-(* Note: LIST_TO_SET_REVERSE will be handy for the following *)
-
-val acc_returned = prove(``
+(* All values belonging to the accumulator variable in a call to
+lowest_degree_subgraph_heuristic_aux will feature in the result *)
+val acc_returned = store_thm("acc_returned", ``
 ! done list acc .
 MEM x acc ==> MEM x (lowest_degree_subgraph_heuristic_aux done list acc)
 ``,
@@ -597,9 +600,13 @@ STRIP_TAC THEN1 (
     METIS_TAC [LIST_TO_SET_REVERSE]) THEN
 REPEAT STRIP_TAC THEN
 FULL_SIMP_TAC bool_ss [LET_DEF] THEN
-(* TODO *)
-cheat)
+`MEM x ((r, rs)::cs')` by METIS_TAC [MEM] THEN
+FULL_SIMP_TAC bool_ss [lowest_degree_subgraph_heuristic_aux_def] THEN
+FULL_SIMP_TAC bool_ss [LET_DEF])
 
+(* Being a member of the result of sorting with the lowest-degree subgraph
+heuristic is equivalent to being a member of the original list or of the
+accumulator variable passed in *)
 val lowest_degree_subgraph_heuristic_aux_MEM = store_thm(
     "lowest_degree_subgraph_heuristic_aux_MEM", ``
 ! done list acc .
@@ -632,6 +639,7 @@ FULL_SIMP_TAC bool_ss [LET_DEF] THEN
 `~(MEM x (sort_not_considered_by_degree (r INSERT done) cs))`
        by METIS_TAC [sort_not_considered_by_degree_ok])
 
+(* The lowest-degree subgraph heuristic satisfies heuristic_application_ok *)
 val lowest_degree_subgraph_heuristic_ok = store_thm(
     "lowest_degree_subgraph_heuristic_ok", ``
 heuristic_application_ok lowest_degree_subgraph_heuristic
