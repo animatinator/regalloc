@@ -1217,7 +1217,7 @@ Therefore all colourings which satisfy colouring_satisfactory will also satisfy 
 
 \section{Overall proof of correctness}
 
-Now that the algorithm has been proven to generate colourings satisfying colouring_ok, it remains to show that colouring_ok is sufficient to prove that the code behaviour will be unchanged. This statement is as follows:
+Now that the algorithm has been proven to generate colourings satisfying \texttt{colouring\_ok}, it remains to show that \texttt{colouring\_ok} is sufficient to prove that the code behaviour will be unchanged. This statement is as follows:
 
 \begin{alltt}\small
 	\HOLTokenTurnstile{} \HOLConst{colouring_ok} \HOLFreeVar{c} \HOLFreeVar{code} \HOLFreeVar{live} \HOLTokenConj{} \HOLConst{no_dead_code} \HOLFreeVar{code} \HOLFreeVar{live} \HOLTokenConj{}
@@ -1268,7 +1268,56 @@ The proof of correctness was relatively easy, using induction and case splitting
 
 \subsection{Lemmas}
 
+The correctness proof depends on a number of lemmas. Firstly, the proof was by induction and so making use of the inductive hypothesis required a pair of proofs showing that \texttt{colouring\_ok} and \texttt{no\_dead\_code} are preserved when the first instruction is removed. The proofs of these statements were trivial by expanding definitions:
+
+\begin{alltt}\small
+	\infer{\HOLinline{\HOLConst{colouring_ok} \HOLFreeVar{c} \HOLFreeVar{code}
+  \HOLFreeVar{live}}}{\HOLinline{\HOLConst{colouring_ok} \HOLFreeVar{c} (\HOLConst{Inst} \HOLFreeVar{n} \HOLFreeVar{n\sb{\mathrm{0}}} \HOLFreeVar{n\sb{\mathrm{1}}}::\HOLFreeVar{code}) \HOLFreeVar{live}}}
+	\infer{\HOLinline{\HOLConst{no_dead_code} \HOLFreeVar{code} \HOLFreeVar{live}}}{\HOLinline{\HOLConst{no_dead_code} (\HOLConst{Inst} \HOLFreeVar{n} \HOLFreeVar{n\sb{\mathrm{0}}} \HOLFreeVar{n\sb{\mathrm{1}}}::\HOLFreeVar{code}) \HOLFreeVar{live}}}
+\end{alltt}
+
+Another small yet useful lemma is the following, stating that \texttt{colouring\_ok} means applying the colouring to the current set of live variables yields a duplicate-free result:
+
+\begin{alltt}\small
+	\infer{\HOLinline{\HOLConst{duplicate_free}
+  (\HOLConst{MAP} \HOLFreeVar{c} (\HOLConst{get_live} \HOLFreeVar{code} \HOLFreeVar{live}))}}{\HOLinline{\HOLConst{colouring_ok} \HOLFreeVar{c} \HOLFreeVar{code} \HOLFreeVar{live}}}
+\end{alltt}
+
+This was proved by case splitting on the code variable then evaluating and simplifying the result to prove the goal.
+
+It was also useful to be able to state that if the result of mapping a colouring over a list is duplicate-free and one considers two unequal elements of the original list, they will still not be equal after applying the function to each of them:
+
+\begin{alltt}\small
+	\HOLTokenTurnstile{} \HOLConst{duplicate_free} (\HOLConst{MAP} \HOLFreeVar{c} \HOLFreeVar{live}) \HOLTokenConj{} \HOLFreeVar{x} \HOLTokenNotEqual{} \HOLFreeVar{y} \HOLTokenConj{} \HOLConst{MEM} \HOLFreeVar{x} \HOLFreeVar{live} \HOLTokenConj{}
+   \HOLConst{MEM} \HOLFreeVar{y} \HOLFreeVar{live} \HOLTokenImp{}
+   \HOLFreeVar{c} \HOLFreeVar{x} \HOLTokenNotEqual{} \HOLFreeVar{c} \HOLFreeVar{y}
+\end{alltt}
+
+This was proved in Section (TODO).
+
+These last two lemmas make it possible to prove the following statement, which essentially states that a colouring satisfying \texttt{colouring\_ok} for a particular block of code is injective on the set of live variables for that code:
+
+\begin{alltt}\small
+	\HOLTokenTurnstile{} \HOLConst{no_dead_code} \HOLFreeVar{code} \HOLFreeVar{live} \HOLTokenConj{} \HOLConst{colouring_ok} \HOLFreeVar{c} \HOLFreeVar{code} \HOLFreeVar{live} \HOLTokenConj{} \HOLFreeVar{x} \HOLTokenNotEqual{} \HOLFreeVar{y} \HOLTokenConj{}
+   \HOLConst{MEM} \HOLFreeVar{x} (\HOLConst{get_live} \HOLFreeVar{code} \HOLFreeVar{live}) \HOLTokenConj{} \HOLConst{MEM} \HOLFreeVar{y} (\HOLConst{get_live} \HOLFreeVar{code} \HOLFreeVar{live}) \HOLTokenImp{}
+   \HOLFreeVar{c} \HOLFreeVar{x} \HOLTokenNotEqual{} \HOLFreeVar{c} \HOLFreeVar{y}
+\end{alltt}
+
+This follows trivially from the two lemmas above.
+
 \subsection{Proof of correctness}
+
+It is now possible to complete the proof of the original statement of correctness:
+
+\begin{alltt}\small
+	\HOLTokenTurnstile{} \HOLConst{colouring_ok} \HOLFreeVar{c} \HOLFreeVar{code} \HOLFreeVar{live} \HOLTokenConj{} \HOLConst{no_dead_code} \HOLFreeVar{code} \HOLFreeVar{live} \HOLTokenConj{}
+   (\HOLConst{MAP} \HOLFreeVar{s} (\HOLConst{get_live} \HOLFreeVar{code} \HOLFreeVar{live}) =
+    \HOLConst{MAP} (\HOLFreeVar{t} o \HOLFreeVar{c}) (\HOLConst{get_live} \HOLFreeVar{code} \HOLFreeVar{live})) \HOLTokenImp{}
+   (\HOLConst{MAP} (\HOLConst{eval} \HOLFreeVar{f} \HOLFreeVar{s} \HOLFreeVar{code}) \HOLFreeVar{live} =
+    \HOLConst{MAP} (\HOLConst{eval} \HOLFreeVar{f} \HOLFreeVar{t} (\HOLConst{apply} \HOLFreeVar{c} \HOLFreeVar{code}) o \HOLFreeVar{c}) \HOLFreeVar{live})
+\end{alltt}
+
+The proof is by induction on the block of code, and uses all the lemmas above along with various definition expansions and some of the HOL lemmas regarding \texttt{MAP} and \texttt{MEM}. With this proved, it follows that the full register allocation algorithm is correct in that it doesn't affect code behaviour with respect to evaluation.
 
 
 \chapter{Extension features}
