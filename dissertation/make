@@ -15,5 +15,7 @@ echo "Mungifying dissertation..."
 echo "Running pdflatex..."
 cd dissertation
 pdflatex "$FILENAME.tex"
-pdflatex "$FILENAME.tex"  # One more for luck
+bibtex "$FILENAME.aux"
+pdflatex "$FILENAME.tex"
+pdflatex "$FILENAME.tex"
 cd "C:/Users/David/Documents/Code/HOL4/Part III project/regalloc/dissertation"

@@ -810,7 +810,8 @@ val remove_identity_moves_def = Define `
     (remove_identity_moves (instr::code) = instr::(remove_identity_moves code))
 `
 
-val remove_identity_moves_correct = prove(``
+val remove_identity_moves_correct = store_thm("remove_identity_moves_correct",
+``
 ! s code live .
 eval_instr s code = eval_instr s (remove_identity_moves code)
 ``,

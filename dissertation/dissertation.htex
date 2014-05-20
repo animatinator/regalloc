@@ -38,8 +38,8 @@
 \setcounter{page}{0}
 \pagestyle{plain}
 \tableofcontents
-\listoffigures
-\listoftables
+%\listoffigures
+%\listoftables
 
 \onehalfspacing
 
@@ -208,7 +208,15 @@ more exotic heuristics could also be verified without much additional effort.
 
 \chapter{Related Work} 
 
-TODO
+Although some considerable work has gone into the formal verification of programs, and more recently into the compilers themselves, the problem register allocation has not been explored in quite as much depth. However, there are nonetheless several related publications which attempt to formally verify register allocators (and, more generally, graph-colouring algorithms) in various different ways. In this section, a number of these approaches are described and compared, so as to give a background to the work undertaken for this project.
+
+There have been several recent approaches to formalising graph theory in a proof system like HOL. A notable example is (TODO 1), in which a full library of graph theory primitives is developed for the Isabelle proof system. More relevantly, (TODO 2) specifically discusses formalising graph colouring in Isabelle/HOL as it tackles the problem of verifying the five colour theorem. However, neither of these was found to be general enough to build upon for this project, and a pair customised graph representations was used, both of which were designed to best fit their applications.
+
+A recent example of a verified register allocator is the one employed by the CompCert compiler (TODO 3), a compiler for a subset of the C language which has been formally verified in Coq. This was proven to never generate code with behaviour differing from the specified behaviour of the input code, and featured a graph-colouring register allocator whose output was checked by a formally verified algorithm designed to ensure the colouring was correct (TODO 4). However, it should be noted that although this ensures correct output, its purpose is to verify the output of an untrusted colouring algorithm by matching output instructions to corresponding input instructions and using live variable analysis to confirm that the results are correct. The algorithm itself is not formally verified, allowing for algorithms to be changed without needing to re-prove correctness (TODO 5).
+
+A more rigorous approach to proving correctness is given in (TODO 6), where a fully verified OCaml implementation of the common Iterated Register Coalescing algorithm (TODO 7) is demonstrated. This is a particularly strong example of a verified register allocator, and was ultimately implemented in CompCert. However, (TODO the proof is very tightly coupled?), making it difficult to modify to experiment with different heuristics or add features.
+
+The approach used in this project was to separate the sub-stages of allocation as cleanly as possible and build up towards an algorithm with similar performance to algorithms used in practice, arranging the proofs so that further improvements can be made and verified without much extra work. Although the algorithm verified is not quite as powerful as the IRC algorithm verified in (TODO 6), it represents a full end-to-end system where individual components can be improved with relative ease.
 
 
 \chapter{Live variable analysis and clash graph generation}
@@ -972,7 +980,73 @@ Many other sort-based heuristics are possible. For instance, if only a finite nu
 
 \subsection{More complex heuristics}
 
-TODO
+Several more elaborate heuristics are possible. The main one explored in this project is used quite frequently where there are finitely many registers available, and consists of picking at each stage the vertex with the lowest degree, removing it from the graph and placing it on a stack. This is repeated until no registers remain, and registers are then popped off the stack and coloured one at a time. This is very similar to a highest-degree-first heuristic such as the one in the last subsection, but with the advantage that the ordering takes into account which vertices will already be colourable at each stage. This is known to produce a better ordering that a normal highest-degree-first ordering (TODO ref?).
+
+This was implemented using a set of vertices which have already been considered, and writing the sort function so that it ignores them in counting the degree of a vertex. The sorting code is as follows:
+
+\begin{alltt}\small
+	\HOLthm[def]{colouring.sort_not_considered_by_degree_def}
+\end{alltt}
+
+This uses the HOL \texttt{QSORT} algorithm, passing in a predicate which states that two vertices are correctly ordered if the first one has lower degree and has not yet been considered. The predicate makes use of the following function which finds the degree of a vertex whilst ignoring those already considered (and thus removed from the graph):
+
+\begin{alltt}\small
+	\HOLthm[def]{colouring.vertex_degree_in_subgraph_def}
+\end{alltt}
+
+The main algorithm uses an auxiliary function which iterates through a list (assumed to be sorted by the above algorithm), putting the top element on the front of an accumulator ($cs'$), sorting the tail and calling itself recursively with the sorted tail and updated set of already-considered vertices ($done$):
+
+\begin{alltt}\small
+	\HOLthm[def]{colouring.lowest_degree_subgraph_heuristic_aux_def}
+\end{alltt}
+
+Due to the fact that the vertex list is sorted each time, termination of this function is non-trivial. The proof follows from the fact that each iteration shortens the length of the vertex list, as sorting maintains the length of its input. The custom induction rule generated for this function is as follows:
+
+\begin{alltt}\small
+	\HOLthm{colouring.lowest_degree_subgraph_heuristic_aux_ind}
+\end{alltt}
+
+The main function calls the auxiliary with an empty `done' set\footnote{As HOL sets are represented as characteristic functions of type $\alpha \rightarrow bool$, the empty set is represented by $\lambda x . F$} and accumulator, and a sorted version of the input vertex list:
+
+\begin{alltt}\small
+	\HOLthm[def]{colouring.lowest_degree_subgraph_heuristic_def}
+\end{alltt}
+
+\subsubsection{Verification}
+
+The smallest-last algorithm ended up being quite non-trivial to verify. The main trick used to simplify it was the following lemma, which states that two sets formed from lists are equal when membership of one list is equivalent to membership of the other:
+
+\begin{alltt}\small
+	\HOLthm{colouring.set_list_equality}
+\end{alltt}
+
+This was relatively simple to prove using the standard HOL axioms about set equality. It was then necessary to prove that the sorting function preserves the elements passed into it:
+
+\begin{alltt}\small
+	\HOLthm{colouring.sort_not_considered_by_degree_ok}
+\end{alltt}
+
+The proof works by expanding the definition and using the above lemma along with the following standard lemma about \texttt{QSORT}:
+
+\begin{alltt}\small
+	\HOLthm{sorting.QSORT_MEM}
+\end{alltt}
+
+The next important lemma states that anything passed in as the accumulator will end up in the final result:
+
+\begin{alltt}\small
+	\HOLthm{colouring.acc_returned}
+\end{alltt}
+
+With the custom induction rule for \texttt{lowest\_degree\_subgraph\_heuristic\_aux}, this was relatively simple to prove by expanding definitions and using the fact that reversing a list preserves its members (a standard HOL axiom).
+
+The next step was to equate the set returned by the heuristic with the sets of elements passed in:
+
+\begin{alltt}\small
+	\HOLthm{colouring.lowest_degree_subgraph_heuristic_aux_MEM}
+\end{alltt}
+
+This again used the custom induction rule. The base case was relatively simple, but the induction case required more work. The trick was to case split on whether the arbitrary $x$ was equal to the current value at the top of the vertex list, in which case the goal follows easily by simplifying. In the other situation, a case split was performed on whether $x$ belongs to the accumulator. If it does, it trivially exists in the result by the lemma proved earlier. Otherwise, we case split again to see whether it belongs to the tail of the list of vertices passed in. In either case, the required goal follows by expanding definitions and using the earlier lemma stating that the sort function preserves the set of elements passed to it. Thus the proof was completed, and the heuristic was shown to be correct.
 
 
 \chapter{Bringing everything together}
@@ -1182,12 +1256,116 @@ The proof is by induction on the block of code, and uses all the lemmas above al
 
 \chapter{Extension features}
 
+\section*{Introduction}
+
+The algorithms verified so far form a complete functional register allocator. However, the allocator disregards some important practical considerations. This chapter covers the extension features which were implemented and verified after the core algorithms had been proved correct, and discusses how the system might be further extended to allow for features not considered in this project.
+
+The first extension is the addition of preference graphs to influence colouring choices. In real systems, there are many situations where a value has to be moved into a particular register before it is used: a particular operator may require its inputs to be placed in certain registers, say, or it may output to a temporary `result' register meaning the result has to be moved away to avoid being clobbered by the next operation. The processor could also have a particular convention for procedure calls which requires certain values to be stored in appropriate registers. Having lots of move instructions around certain operations wastes time, and so a good optimising compiler will make an effort to remove these where possible.
+
+Preference graphs are a solution to this: they link virtual registers which should ideally be mapped to the same physical register, making a move instruction redundant and allowing it to be safely removed. An algorithm was verified which generates such a preference graph, and a modified colouring algorithm was written to use these preferences wherever possible. A function to remove redundant moves after colouring was then implemented and proven correct.
+
+Another important consideration is the lack of infinite registers in real systems. This requires certain values to be spilled to memory, and as a result instructions have to be added to the code to load and store these spilled values. This extension largely amounted to generating these instructions and proving that the resulting behaviour is the same, and possible heuristics for the situation where some registers will be spilled are discussed.
+
+\section{Preference graphs}
+
+\subsection{Representation}
+
+A preference graph is broadly similar to a clash graph: each register has an adjacency list of other registers, in this case those with which it should ideally share a physical register. However, to combine this graph with the clash graph effectively it was necessary to use a structure allowing an arbitrary register to be looked up without iterating through the structure. Furthermore, preference graphs are never iterated through in the same way as clash graphs, and so a list of adjacency lists was deemed inappropriate in this case.
+
+Instead, a preference graph is a function mapping registers to lists of `preferred' registers, initialised to $\lambda x . []$ for registers with no preferences. This makes it much easier for the algorithm to look up a register's preferences quickly.
+
+\subsection{Generating preference graphs}
+
+\subsubsection{Move instructions}
+
+To make it possible to generate preference graphs, it was necessary to extend the code to include `move' instructions. For this purpose, the code definition was extended to include an operation as well as the three registers:
+
+\begin{alltt}\small
+	\HOLthm{three_addr.datatype_instr}
+\end{alltt}
+
+The `op' parameter is either an arbitrary function of type $num \rightarrow num \rightarrow num$ or a move, as defined below:
+
+\begin{alltt}\small
+	\HOLthm{three_addr.datatype_op}
+\end{alltt}
+
+An auxiliary function was implemented to evaluate the action of an operation:
+
+\begin{alltt}\small
+	\HOLthm[def]{three_addr.eval_op_def}
+\end{alltt}
+
+In the case of a move instruction, it returns a function which simply returns the first argument register, to be stored in the destination register. The evaluation function is then re-defined appropriately, using \texttt{eval\_op}:
+
+\begin{alltt}\small
+	\HOLthm[def]{three_addr.eval_instr_def}
+\end{alltt}
+
+\subsubsection{Building graphs}
+
+A preference graph simply contains edges between those vertices which are source and destination in a $move$ instruction. The function to build a graph must therefore scan the code for $move$ instructions and add an edge whenever one is found:
+
+\begin{alltt}\small
+	\HOLthm[def]{three_addr.compute_preferences_def}
+\end{alltt}
+
+The function \texttt{add\_preference\_pair} simply adds each of the registers to the other's list of preferences by updating the preferences function:
+
+\begin{alltt}\small
+	\HOLthm[def]{three_addr.add_preference_pair_def}
+\end{alltt}
+
+\subsection{Altered lowest-first colouring algorithm}
+
+To take these preferences into account, an alternative colouring function was implemented taking a preference graph as an extra argument:
+
+\begin{alltt}\small
+	\HOLthm[def]{colouring.lowest_first_preference_colouring_def}
+\end{alltt}
+
+This uses the auxiliary function \texttt{best\_preference\_colour}:
+
+\begin{alltt}\small
+	\HOLthm[def]{colouring.best_preference_colour_def}
+\end{alltt}
+
+The \texttt{best\_preference\_colour} function iterates through preferences until it finds one which can be satisfied, returning zero if none can be satisfied. The main function takes the result of this for the current vertex and sees whether it conflicts -- if it does, normal lowest-first colouring is used; if it does not, the preference colour is used.
+
+\subsubsection{Correctness}
+
+The correctness of this function is stated below:
+
+\begin{alltt}\small
+	\HOLthm{colouring.lowest_first_preference_colouring_satisfactory}
+\end{alltt}
+
+This proof was very similar to the proof of lowest-first colouring's correctness, but with a case split on whether or not the preference colour was used. If it was, then the `if' statement in the function guarantees that it doesn't conflict with the current register's neighbours. Otherwise, the lowest-first colour is used which can be shown to be safe in the same way as it was shown for plain lowest-first colouring.
+
+\subsection{Removing redundant moves}
+
+With a preference-driven colouring obtained, the next step is to remove any `move' instructions which have become redundant after colouring. A function to handle this was implemented:
+
+\begin{alltt}\small
+	\HOLthm[def]{three_addr.remove_identity_moves_def}
+\end{alltt}
+
+This leaves the code unchanged unless it finds a `move' instruction with equal source and destination registers, in which case it drops the instruction. It was necessary to prove that this doesn't affect evaluation behaviour of the code:
+
+\begin{alltt}\small
+	\HOLthm{three_addr.remove_identity_moves_correct}
+\end{alltt}
+
+The proof of this is by induction, with a trivial base case. The inductive case follows by taking cases on the instruction type and the operator, with the only non-trivial case being a `move' instruction. Case-splitting on equality of source and destination gives two trivial goals which can be proved immediately by evaluation and simplification.
+
+\section{Finite registers and spilling}
+
 TODO
 
 
-\chapter{Summary and conclusions}
+\chapter{Evaluation and conclusions}
 
-TODO
+TODO~\cite{arrow_calculus}
 
 
 
@@ -1195,7 +1373,7 @@ TODO
 \appendix
 \singlespacing
 
-\bibliographystyle{unsrt} 
-%\bibliography{dissertation} 
+\bibliographystyle{plain}
+\bibliography{bibliography}
 
 \end{document}
