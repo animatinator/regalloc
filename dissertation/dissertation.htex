@@ -49,23 +49,11 @@
 \pagenumbering{arabic}
 \setcounter{page}{1}
 
-This is the introduction where you should introduce your work.  In
-general the thing to aim for here is to describe a little bit of the
-context for your work --- why did you do it (motivation), what was the
-hoped-for outcome (aims) --- as well as trying to give a brief
-overview of what you actually did.
+Register allocation is one of the most important stages in an optimising compiler. Due to the massive speed difference between CPU registers and lower-level caches, a program which makes efficient use of registers and minimises memory accesses will be considerably faster than one which na\"{\i}vely stores variables in memory. The responsibility of register allocation is therefore to map program variables into physical registers whilst also minimising the number of values which have to be stored in memory. As with all optimisation steps, special care is needed to ensure register allocation does not accidentally alter program behaviour. Some values may be allocated the same register on the assumption that they will not be using it at the same time, and for the sake of correctness it is critical that this assumption is valid.
 
-It's often useful to bring forward some ``highlights'' into 
-this chapter (e.g.\ some particularly compelling results, or 
-a particularly interesting finding). 
+The objective of this project was to formally model a realistic register allocation algorithm in the HOL4 theorem prover, and verify that it does not change program behaviour. The approach used was to begin with a very simple graph colouring algorithm and incrementally improve it, adding extra heuristics and making the model more realistic, whilst maintaining a proof of overall correctness with respect to the semantics of code evaluation. Overall, the project was successful in its goals: a full end-to-end algorithm was verified, from source three-address code to output code with registers allocated, which includes a colouring algorithm and clash graph generator representative of those used in practice. The system is reasonably modular, and extra heuristics can be added and verified with little difficulty. It also models some more difficult aspects of register allocation, namely preference graphs and register spilling, and the algorithms handling these were fully verified as well.
 
-It's also traditional to give an outline of the rest of the
-document, although without care this can appear formulaic 
-and tedious. Your call. 
-
-
-Register allocation is one of the most important stages in an optimising compiler. Due to the massive speed difference between CPU registers and lower-level caches, a program which makes efficient use of registers and minimises memory accesses will be considerably faster than one which na\"{\i}vely stores variables in memory.
-
+The next few chapters examing the background surrounding the problem of register allocation, and review some recent related work. Chapters \ref{sec:LVAClashGraphs} through \ref{sec:extensions} go on to describe in detail how the system was modelled and verified. In chapter \ref{sec:LVAClashGraphs}, a series of functions for performing live-variable analysis and generating the corresponding clash graphs is described, alongside descriptions of their correctness proofs. Chapter \ref{sec:colouring} goes on to explore the core of the algorithm: taking a clash graph and producing a colouring, through a combination of vertex order heuristics and colouring algorithms. The work of these chapters is brought together in Chapter \ref{sec:bringingTogether}, where the individual correctness proofs are used to build an overall proof of correctness with respect to code evaluation. Finally, Chapter \ref{sec:extensions} examines some of the extension work which was completed once the main algorithm had been verified.
 
 \chapter{Background} \label{sec:background}
 
@@ -155,16 +143,16 @@ This is not an exhaustive list of the heuristics used in practice, but these two
 
 Although some considerable work has gone into the formal verification of programs, and more recently into the compilers themselves, the problem register allocation has not been explored in quite as much depth. However, there are nonetheless several related publications which attempt to formally verify register allocators (and, more generally, graph-colouring algorithms) in various different ways. In this section, a number of these approaches are described and compared, so as to give a background to the work undertaken for this project.
 
-There have been several recent approaches to formalising graph theory in a proof system like HOL. A notable example is \cite{isabelleGraphs}, in which a full library of graph theory primitives is developed for the Isabelle proof system. More relevantly, \cite{5colourTheorem} specifically discusses formalising graph colouring in Isabelle/HOL as it tackles the problem of verifying the five colour theorem. However, neither of these was found to be general enough to build upon for this project, and a pair customised graph representations was used, both of which were designed to best fit their applications.
+There have been several recent approaches to formalising graph theory in a proof system like HOL. A notable example is \cite{isabelleGraphs}, in which a full library of graph theory primitives is developed for the Isabelle proof system. More relevantly, \cite{5colourTheorem} specifically discusses formalising graph colouring in Isabelle/HOL as it tackles the problem of verifying the five colour theorem. However, neither of these was found to be general enough to build upon for this project -- ultimately, a pair of customised graph representations was used, both of which were designed to best fit their specific applications.
 
-A recent example of a verified register allocator is the one employed by the CompCert compiler (\cite{compCert}), a compiler for a subset of the C language which has been formally verified in Coq. This was proven to never generate code with behaviour differing from the specified behaviour of the input code, and featured a graph-colouring register allocator whose output was checked by a formally verified algorithm designed to ensure the colouring was correct (\cite{compCertValidation}). However, it should be noted that although this ensures correct output, its purpose is to verify the output of an untrusted colouring algorithm by matching output instructions to corresponding input instructions and using live variable analysis to confirm that the results are correct. The algorithm itself is not formally verified, allowing for algorithms to be changed without needing to re-prove correctness (\cite{compCertRegAllocExplanation}).
+A recent example of a verified register allocator is the one employed by the CompCert compiler (\cite{compCert}), a compiler for a subset of the C language which has been formally verified in Coq. This was proven never to generate code with behaviour differing from the specified behaviour of the input code, and featured a graph-colouring register allocator whose output was checked by a formally verified algorithm designed to ensure the colouring was correct (\cite{compCertValidation}). However, it should be noted that although this ensures correct output, its purpose is to verify the results of an untrusted colouring algorithm by matching output instructions to corresponding input instructions and using live variable analysis to confirm that the results are correct. The algorithm itself is not formally verified, allowing for algorithms to be changed without needing to re-prove correctness (\cite{compCertRegAllocExplanation}).
 
 A more rigorous approach to proving correctness is given in \cite{compCertRegAllocProof}, where a fully verified OCaml implementation of the common Iterated Register Coalescing algorithm (\cite{irc}) is demonstrated. This is a particularly strong example of a verified register allocator, and was ultimately implemented in CompCert. However, (TODO the proof is very tightly coupled?), making it difficult to modify to experiment with different heuristics or add features.
 
 The approach used in this project was to separate the sub-stages of allocation as cleanly as possible and build up towards an algorithm with similar performance to algorithms used in practice, arranging the proofs so that further improvements can be made and verified without much extra work. Although the algorithm verified is not quite as powerful as the IRC algorithm verified in \cite{compCertRegAllocProof}, it represents a full end-to-end system where individual components can be improved with relative ease.
 
 
-\chapter{Live variable analysis and clash graph generation}
+\chapter{Live variable analysis and clash graph generation} \label{sec:LVAClashGraphs}
 
 \section*{Introduction}
 
@@ -599,7 +587,7 @@ This can be shown by induction, case splitting on whether the current list head 
 This concludes the proof of correctness of the clash graph generator. These theorems will be used later to help prove the overall correctness of the register allocator in Chapter~\ref{sec:bringingTogether}.
 
 
-\chapter{Colouring algorithms}
+\chapter{Colouring algorithms} \label{sec:colouring}
 
 \section*{Introduction}
 
@@ -812,7 +800,7 @@ This uses the auxiliary function \texttt{smallest\_nonmember}, which begins from
 
 \subsubsection{Termination of \texttt{smallest\_nonmember}}
 
-The \texttt{smallest\_nonmember} function's termination is non-trivial, and so had to proved separately. The approach used was to show that each recursive iteration decreased the distance between the smallest nonmember value and the maximum value of the list, found using the following function:
+The \texttt{smallest\_nonmember} function's termination is non-trivial, and so had to proved separately. The approach used was to show that each recursive iteration decreases the distance between the smallest nonmember value and the maximum value of the list, found using the following function:
 
 \begin{alltt}\small
 	\HOLthm[def]{colouring.list_max_def}
@@ -826,7 +814,7 @@ To make the proof easier, the following lemma showing that the maximum of a list
 
 It is fairly simple to show that as the value to be returned is incremented on each recursion, it will continuously move towards the maximum of the list, and so termination of \texttt{smallest\_nonmember} can now be proved using a relation which subtracts the value of $x$ from the maximum of the list.
 
-\subsection{Correctness proof}
+\subsection{Correctness proof} \label{sec:lowestFirstColouringCorrectness}
 
 As for the na\"{\i}ve colouring, the proof of correctness depends on showing two things: the colour selected for a new vertex will not conflict with any of its neighbours, and the updated colouring will be valid for all vertices whose colours have already been assigned. The first of these amounts to proving that the value returned by \texttt{smallest\_nonmember} is indeed not a member:
 
@@ -1284,7 +1272,7 @@ The correctness of this function is stated below:
 	\HOLthm{colouring.lowest_first_preference_colouring_satisfactory}
 \end{alltt}
 
-This proof was very similar to the proof of lowest-first colouring's correctness, but with a case split on whether or not the preference colour was used. If it was, then the `if' statement in the function guarantees that it doesn't conflict with the current register's neighbours. Otherwise, the lowest-first colour is used which can be shown to be safe in the same way as it was shown for plain lowest-first colouring.
+This proof was very similar to the proof of lowest-first colouring's correctness (see Section \ref{sec:lowestFirstColouringCorrectness}, but with a case split on whether or not the preference colour was used. If it was, then the `if' statement in the function guarantees that it doesn't conflict with the current register's neighbours. Otherwise, the lowest-first colour is used which can be shown to be safe in the same way as it was shown for plain lowest-first colouring.
 
 \subsection{Removing redundant moves}
 
