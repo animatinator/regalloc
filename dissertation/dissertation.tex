@@ -64,85 +64,42 @@ document, although without care this can appear formulaic
 and tedious. Your call. 
 
 
+Register allocation is one of the most important stages in an optimising compiler. Due to the massive speed difference between CPU registers and lower-level caches, a program which makes efficient use of registers and minimises memory accesses will be considerably faster than one which na\"{\i}vely stores variables in memory.
+
+
 \chapter{Background} \label{sec:background}
 
 \section {The problem of register allocation}
 
-When compiling code, we generally assume the existence of an infinite number of
-locations in which to store values. Each variable used by the program is treated
-as its own location, and temporaries and results are freely allocated to conceptual
-registers. However, in reality all processors have only finite numbers of physical
-registers, some of which are reserved for specific purposes, and so the compiler
-ultimately has to map variables in the code to registers in such a way that ensures
+When compiling code, we generally assume the existence of an infinite number of locations in which to store values. Each variable used by the program is treated as its own location, and temporaries and results are freely allocated to conceptual
+registers. However, in reality all processors have only finite numbers of physical registers, some of which are reserved for specific purposes, and so the compiler ultimately has to map variables in the code to registers in such a way that ensures
 the code's behaviour is the same.
 
-There are many issues involved when doing this. The main problem is that code will
-often use far more `virtual' registers than actually exist on the target processor.
-The simplest solution to this is to store any values which won't fit in memory, but
-this considerably worsens performance. The solution is to find variables which are
-never in use at the same time and place them in the same register, allowing registers
-to be re-used when the values originally assigned to them are not in use.
+There are many issues involved when doing this. The main problem is that code will often use far more `virtual' registers than actually exist on the target processor. The simplest solution to this is to store any values which won't fit in memory, but this considerably worsens performance. The solution is to find variables which are never in use at the same time and place them in the same register, allowing registers to be re-used when the values originally assigned to them are not in use.
 
-This optimisation is enabled by liveness analysis. Essentially, a variable is live
-where changing its value will affect the program's future behaviour [ref?]. Because
-this is difficult to decide with absolute precision, we generally compute a safe
-over-approximation of liveness: a variable is live if an instruction reachable from
-here reads its value, and its value is not written to in a preceding instruction.
-Liveness is computed by repeatedly iterating over instructions in the code from the
-end backwards, updating each instruction's set of live variables according the
-following liveness equation:
+This optimisation is enabled by liveness analysis. Essentially, a variable is live where changing its value will affect the program's future behaviour [ref?]. Because this is difficult to decide with absolute precision, we generally compute a safe
+over-approximation of liveness: a variable is live if an instruction reachable from here reads its value, and its value is not written to in a preceding instruction. Liveness is computed by repeatedly iterating over instructions in the code from the end backwards, updating each instruction's set of live variables according the following liveness equation:
 
 \begin{center}
 $live(n) = \left(live(n+1) \setminus write(n)\right) \cup read(n)$
 \end{center}
 
-(Where live(n) is the set of variables live at instruction n, live(n+1) is those
-live at the next instruction and read(n) and write(n) are the variables read and written
-by the instruction.)
+(Where $live(n)$ is the set of variables live at instruction $n$, $live(n+1)$ is those live at the next instruction and $read(n)$ and $write(n)$ are the variables read and written by the instruction.)
 
-This is repeated until the live variable sets stop changing. With this information,
-we can deduce which variables are live at the same time, and thus which variables
-cannot occupy the same register because doing so would result in one overwriting the
-other whilst the other was about to be used.
+This is repeated until the live variable sets stop changing. With this information, we can deduce which variables are live at the same time, and thus which variables cannot occupy the same register because doing so would result in one overwriting the other whilst the other was about to be used.
 
-When no allocation can satisfy these clashes between variables, it becomes necessary
-to spill variables to memory. This means reading or writing said variables takes
-considerably longer, and so an effective register allocation algorithm should minimise
-spills wherever possible.
+When no allocation can satisfy these clashes between variables, it becomes necessary to spill variables to memory. This means reading or writing said variables takes considerably longer, and so an effective register allocation algorithm should minimise spills wherever possible.
 
 %TODO: [Find a reference or two for this next bit?]
-Another thing to consider is that some target architectures have constraints on what
-registers can be used for. For instance, a particular operator may require its operands
-to be stored in particular registers, or may place the output in a designated `result'
-register. This means move instructions will be required to satisfy these requirements,
-slowing the overall program down. Good register allocators allow for this by biasing
-allocation so that these move instructions can be eliminated wherever possible.
+Another thing to consider is that some target architectures have constraints on what registers can be used for. For instance, a particular operator may require its operands to be stored in particular registers, or may place the output in a designated `result' register. This means move instructions will be required to satisfy these requirements, slowing the overall program down. Good register allocators allow for this by biasing allocation so that these move instructions can be eliminated wherever possible.
 
 \section{Isomorphism to graph colouring}
 
-The most common approach to register allocation is to reduce the problem to one of graph
-colouring, where we have a graph which we wish to colour with a maximum of K colours such
-that no two adjacent vertices share the same colour (\cite{wolframGraphColouring}). Given the knowledge of which
-variables are live at the same time, we construct a clash graph in which the vertices
-represent registers and an edge between two vertices exists where the corresponding
-registers are simultaneously live. Treating a colour as representing a physical register
-on the target machine, we then attempt to `colour' the graph with target registers such
-that vertices which are linked by a clash edge are always given different colours.
+The most common approach to register allocation is to reduce the problem to one of graph colouring, where we have a graph which we wish to colour with a maximum of $K$ colours such that no two adjacent vertices share the same colour (\cite{wolframGraphColouring}). Given the knowledge of which variables are live at the same time, we construct a clash graph in which the vertices represent registers and an edge between two vertices exists where the corresponding registers are simultaneously live. Treating a colour as representing a physical register on the target machine, we then attempt to `colour' the graph with target registers such that vertices which are linked by a clash edge are always given different colours.
 
-A successful colouring will naturally give a mapping from virtual to physical registers
-enforcing that no registers which are simultaneously live are placed in the same physical
-register. Formally verifying that the colouring resulting from this process will never
-affect the behaviour of the code being compiled was the core objective of this project.
+A successful colouring will naturally give a mapping from virtual to physical registers enforcing that no registers which are simultaneously live are placed in the same physical register. Formally verifying that the colouring resulting from this process will never affect the behaviour of the code being compiled was the core objective of this project.
 
-The K-colourability problem is known to be NP-complete wherever K is greater than two,
-and so finding a truly optimal solution is rarely feasible in practice (as discussed in \cite{graphColouringComplexity}). Instead,
-register allocation algorithms are designed primarily to find a solution which is
-correct, and from there use heuristics to find a solution which is as optimal as
-can be achieved in reasonable time. There are several approaches to this, and many
-of them were verified in detail in this project. As discussed later, the definitions
-and proofs in the project are designed to be largely independent of the algorithm
-and so extending it to verify some of the algorithms not covered would be relatively
-simple.
+The $K$-colourability problem is known to be NP-complete wherever $K$ is greater than two, and so finding a truly optimal solution is rarely feasible in practice (as discussed in \cite{graphColouringComplexity}). Instead, register allocation algorithms are designed primarily to find a solution which is correct, and from there use heuristics to find a solution which is as optimal as can be achieved in reasonable time. There are several approaches to this, and many of them were verified in detail in this project. As discussed later, the definitions and proofs in the project are designed to be largely independent of the algorithm and so extending it to verify some of the algorithms not covered would be relatively simple.
 
 \section {Basic approaches to colouring}
 
@@ -188,21 +145,9 @@ colour based on which vertex is currently adjacent to the most different colours
 Incidence degree colouring is another variant which sorts based on the number of adjacent
 vertices which have already been coloured (\cite{degreeHeuristics}).
 
-A more complex heuristic, which is useful when attempting to colour with at most K colours,
-is to pick at each stage the vertex of highest degree less than K (this constraint on its
-degree ensures that it can definitely be coloured if only K colours are available). This
-vertex is then removed from the graph and placed on top of a vertex stack. The process
-repeats, each time removing a vertex which is guaranteed to be colourable, until no
-vertices of degree less than K remain. Those which have not yet been removed are spilled
-to memory, and the rest of the vertices are popped off the stack one by one and passed
-to the colouring algorithm. The heuristic essentially priorities registers with few
-conflicts, spilling those with many conflicts to memory, and colours those of lowest
-degree first.
+A more complex heuristic, which is useful when attempting to colour with at most $K$ colours, is to pick at each stage the vertex with the lowest degree (if it is less than $K$). This vertex is then removed from the graph and placed on top of a vertex stack. The process repeats, each time removing a vertex which is guaranteed to be colourable, until no vertices of degree less than $K$ remain. Those which have not yet been removed are spilled to memory, and the rest of the vertices are popped off the stack one by one and passed to the colouring algorithm. The heuristic essentially priorities registers with few conflicts, spilling those with many conflicts to memory, and colours those of highest degree first.
 
-This is not an exhaustive list of the heuristics used in practice, but these two types
-are very common and so verification focussed primarily on these. As mentioned, most of
-the verification conditions were designed to be as general as possible such that other
-more exotic heuristics could also be verified without much additional effort.
+This is not an exhaustive list of the heuristics used in practice, but these two types are very common and so verification focussed primarily on these. As mentioned, most of the verification conditions were designed to be as general as possible such that other more exotic heuristics could also be verified without much additional effort.
 
 
 
@@ -356,13 +301,13 @@ This just states that inserting an element does indeed add it -- it is correct w
 This states that if $x$ is a member of a set with a value inserted, and it is not equal to that value, then it must be a member of the original set. The proof is a trivial case split on whether $y$ belongs to the original set, simplifying definitions in each case to prove the goal.
 
 \begin{alltt}\small
-	\HOLTokenTurnstile{} \HOLConst{MEM} \HOLFreeVar{x} \HOLFreeVar{xs} \HOLTokenImp{} \HOLConst{MEM} \HOLFreeVar{x} (\HOLConst{insert} \HOLFreeVar{y} \HOLFreeVar{xs})
+	\infer{\HOLinline{\HOLConst{MEM} \HOLFreeVar{x} (\HOLConst{insert} \HOLFreeVar{y} \HOLFreeVar{xs})}}{\HOLinline{\HOLConst{MEM} \HOLFreeVar{x} \HOLFreeVar{xs}}}
 \end{alltt}
 
 The proof of this is a simple expansion of the definition of insertion, and shows that inserting an element retains the elements already there.
 
 \begin{alltt}\small
-	\HOLTokenTurnstile{} \HOLFreeVar{a} \HOLTokenNotIn{} \HOLConst{set} (\HOLConst{insert} \HOLFreeVar{x} \HOLFreeVar{xs}) \HOLTokenImp{} \HOLFreeVar{a} \HOLTokenNotIn{} \HOLConst{set} \HOLFreeVar{xs}
+	\infer{\HOLinline{\HOLFreeVar{a} \HOLTokenNotIn{} \HOLConst{set} \HOLFreeVar{xs}}}{\HOLinline{\HOLFreeVar{a} \HOLTokenNotIn{} \HOLConst{set} (\HOLConst{insert} \HOLFreeVar{x} \HOLFreeVar{xs})}}
 \end{alltt}
 
 The contrapositive of the above, this is a useful way of simplifying goals where some value isn't an element of a generated set.
@@ -383,7 +328,7 @@ It was also necessary to implement set union, and union over multiple sets. The 
 It was necessary to show that this definitely contains all elements from both sets. The relevant property is given below, and was proven by induction on the size of the first set in the union by demonstrating that once $x$ is reached it is guaranteed to be included in the result.
 
 \begin{alltt}\small
-	\HOLTokenTurnstile{} \HOLConst{MEM} \HOLFreeVar{x} \HOLFreeVar{list} \HOLTokenDisj{} \HOLConst{MEM} \HOLFreeVar{x} \HOLFreeVar{list\sp{\prime}} \HOLTokenImp{} \HOLConst{MEM} \HOLFreeVar{x} (\HOLConst{list_union} \HOLFreeVar{list} \HOLFreeVar{list\sp{\prime}})
+	\infer{\HOLinline{\HOLConst{MEM} \HOLFreeVar{x} (\HOLConst{list_union} \HOLFreeVar{list} \HOLFreeVar{list\sp{\prime}})}}{\HOLinline{\HOLConst{MEM} \HOLFreeVar{x} \HOLFreeVar{list} \HOLTokenDisj{} \HOLConst{MEM} \HOLFreeVar{x} \HOLFreeVar{list\sp{\prime}}}}
 \end{alltt}
 
 Union over multiple sets, here referred to as a flattening union, is defined by recursively applying \texttt{list_union} to pairs of sets from the end of the list forwards:
@@ -418,8 +363,9 @@ As mentioned earlier, the decision to represent a block of code as a simple list
 This is an implementation of the liveness equation given in Section~\ref{sec:background}, which also allows for some variables to be live at the end of the program (which can be used to link together analyses for adjacent blocks of code, or specify which registers hold program results). Showing that this definition is correct is subtle: correctness with respect to register allocation is shown later by demonstrating that colourings satisfying constraints built up from this definition will not change code behaviour. However, another way of showing correctness is by proving that only the variables returned by \texttt{get_live} will affect the evaluation of a program, a property which is stated below:
 
 \begin{alltt}\small
-	\HOLTokenTurnstile{} (\HOLConst{MAP} \HOLFreeVar{s} (\HOLConst{get_live} \HOLFreeVar{code} \HOLFreeVar{live}) = \HOLConst{MAP} \HOLFreeVar{t} (\HOLConst{get_live} \HOLFreeVar{code} \HOLFreeVar{live})) \HOLTokenImp{}
-   (\HOLConst{MAP} (\HOLConst{eval} \HOLFreeVar{f} \HOLFreeVar{s} \HOLFreeVar{code}) \HOLFreeVar{live} = \HOLConst{MAP} (\HOLConst{eval} \HOLFreeVar{f} \HOLFreeVar{t} \HOLFreeVar{code}) \HOLFreeVar{live})
+	\infer{\HOLinline{\HOLConst{MAP} (\HOLConst{eval} \HOLFreeVar{f} \HOLFreeVar{s} \HOLFreeVar{code}) \HOLFreeVar{live} =
+\HOLConst{MAP} (\HOLConst{eval} \HOLFreeVar{f} \HOLFreeVar{t} \HOLFreeVar{code})
+  \HOLFreeVar{live}}}{\HOLinline{\HOLConst{MAP} \HOLFreeVar{s} (\HOLConst{get_live} \HOLFreeVar{code} \HOLFreeVar{live}) = \HOLConst{MAP} \HOLFreeVar{t} (\HOLConst{get_live} \HOLFreeVar{code} \HOLFreeVar{live})}}
 \end{alltt}
 
 The antecedent states that the two stores $s$ and $t$ agree on the variables which are live at the start of the code. The consequent then claims that the stores at the end of the program's evaluation will agree on whatever variables are designated as live at the end. The proof of this statement is fairly complex, and is (TODO write up proof).
@@ -460,6 +406,7 @@ It was then necessary to prove that the set operations defined on list sets pres
 
 \begin{alltt}\small
 	\HOLTokenTurnstile{} \HOLConst{duplicate_free} (\HOLConst{insert} \HOLFreeVar{n} \HOLFreeVar{list}) \HOLTokenEquiv{} \HOLConst{duplicate_free} \HOLFreeVar{list}
+	
 	\HOLTokenTurnstile{} \HOLConst{duplicate_free} (\HOLConst{delete} \HOLFreeVar{n} \HOLFreeVar{list}) \HOLTokenEquiv{} \HOLConst{duplicate_free} \HOLFreeVar{list}
 \end{alltt}
 
@@ -477,14 +424,15 @@ This was shown by induction, using the fact that unions rely on insertion which 
 This was then extended to general unions. The proof works by induction, using the above lemma and expanding definitions.
 
 \begin{alltt}\small
-	\HOLTokenTurnstile{} \HOLConst{EVERY} (\HOLTokenLambda{}\HOLBoundVar{list}. \HOLConst{duplicate_free} \HOLBoundVar{list}) \HOLFreeVar{lists} \HOLTokenImp{}
-   \HOLConst{duplicate_free} (\HOLConst{list_union_flatten} \HOLFreeVar{lists})
+	\infer{\HOLinline{\HOLConst{duplicate_free}
+  (\HOLConst{list_union_flatten}
+     \HOLFreeVar{lists})}}{\HOLinline{\HOLConst{EVERY} (\HOLTokenLambda{}\HOLBoundVar{list}. \HOLConst{duplicate_free} \HOLBoundVar{list}) \HOLFreeVar{lists}}}
 \end{alltt}
 
-The next objective was to show that the set of registers returned by get_live contains no duplicates, assuming there are no duplicates in the set of registers considered to be live at the end of the code. This was a fairly simple proof by induction, using the lemmas duplicate_free_insertion and duplicate_free_deletion and the definition of get_live:
+The next objective was to show that the set of registers returned by \texttt{get\_live} contains no duplicates, assuming there are no duplicates in the set of registers considered to be live at the end of the code. This was a fairly simple proof by induction, using the lemmas about duplicate-freeness of insertion and deletion and the definition of \texttt{get\_live}:
 
 \begin{alltt}\small
-	\HOLTokenTurnstile{} \HOLConst{duplicate_free} \HOLFreeVar{live} \HOLTokenImp{} \HOLConst{duplicate_free} (\HOLConst{get_live} \HOLFreeVar{code} \HOLFreeVar{live})
+	\infer{\HOLinline{\HOLConst{duplicate_free} (\HOLConst{get_live} \HOLFreeVar{code} \HOLFreeVar{live})}}{\HOLinline{\HOLConst{duplicate_free} \HOLFreeVar{live}}}
 \end{alltt}
 
 Finally, the following useful property was proved:
@@ -744,13 +692,13 @@ This specifies that a vertex cannot be linked to itself, and the set of vertices
 
 In Section~\ref{sec:generatedGraphsCorrect}, the proof that graphs generated by get_conflicts have these required properties is described, but for now it is assumed that they will hold of any graph passed in to the colouring algorithms.
 
-\section{Naive graph colouring} \label{sec:naiveColouring}
+\section{Na\"{\i}ve graph colouring} \label{sec:naiveColouring}
 
-A very naive graph colouring algorithm was verified first to obtain a complete proof as early into the project as possible which could be built upon later. This section describes the definition and verification of this simple colouring approach.
+A very na\"{\i}ve graph colouring algorithm was verified first to obtain a complete proof as early into the project as possible which could be built upon later. This section describes the definition and verification of this simple colouring approach.
 
 \subsection{The algorithm}
 
-The naive algorithm simply allocates a colour for every register and assigns them in ascending order. This uses an auxiliary function, \texttt{naive\_colouring\_aux}:
+The na\"{\i}ve algorithm simply allocates a colour for every register and assigns them in ascending order. This uses an auxiliary function, \texttt{naive\_colouring\_aux}:
 
 \begin{alltt}\small
 	\HOLConst{naive_colouring_aux} [] \HOLFreeVar{n} = (\HOLTokenLambda{}\HOLBoundVar{x}. \HOLFreeVar{n})
@@ -758,7 +706,7 @@ The naive algorithm simply allocates a colour for every register and assigns the
 (\HOLFreeVar{r} =+ \HOLFreeVar{n}) (\HOLConst{naive_colouring_aux} \HOLFreeVar{cs} (\HOLFreeVar{n} + 1))
 \end{alltt}
 
-This algorithm assigns registers from $n$ upwards. The main naive colouring function simply calls this starting from zero:
+This algorithm assigns registers from $n$ upwards. The main na\"{\i}ve colouring function simply calls this starting from zero:
 
 \begin{alltt}\small
 	\HOLConst{naive_colouring} \HOLFreeVar{constraints} = \HOLConst{naive_colouring_aux} \HOLFreeVar{constraints} 0
@@ -835,7 +783,7 @@ The third lemma to be proved is as follows:
 
 This just states that if a function is never equal to $n$, $n$ will not feature in the result of mapping $f$ over a list. The proof is a simple induction using the definitions of \texttt{MEM} and \texttt{MAP}.
 
-The final lemma claims that a satisfactory naive colouring starting from $n+1$ will still be satisfactory after mapping a register to $n$, as $n$ will not have been used by any other register:
+The final lemma claims that a satisfactory na\"{\i}ve colouring starting from $n+1$ will still be satisfactory after mapping a register to $n$, as $n$ will not have been used by any other register:
 
 \begin{alltt}\small
 	\HOLTokenTurnstile{} \HOLConst{graph_edge_lists_well_formed} \HOLFreeVar{cs} \HOLTokenConj{}
@@ -919,7 +867,7 @@ Thus the verification of \texttt{naive\_colouring\_aux} is complete, and by the 
 
 \section{Lowest-first colouring}
 
-The lowest-first algorithm is an improvement over naive colouring which allows colours to be re-used where possible. Essentially, the function examines the vertices of the graph in an arbitrary order and assigns to each the lowest possible colour which does not conflict with the colours already assigned to any of its neighbours. This section explores the definition of this function and the proof of correctness, again using \texttt{colouring\_satisfactory} as the verification condition.
+The lowest-first algorithm is an improvement over na\"{\i}ve colouring which allows colours to be re-used where possible. Essentially, the function examines the vertices of the graph in an arbitrary order and assigns to each the lowest possible colour which does not conflict with the colours already assigned to any of its neighbours. This section explores the definition of this function and the proof of correctness, again using \texttt{colouring\_satisfactory} as the verification condition.
 
 \subsection{The algorithm}
 
@@ -968,7 +916,7 @@ It is fairly simple to show that as the value to be returned is incremented on e
 
 \subsection{Correctness proof}
 
-AAs for the naive colouring, the proof of correctness depends on showing two things: the colour selected for a new vertex will not conflict with any of its neighbours, and the updated colouring will be valid for all vertices whose colours have already been assigned. The first of these amounts to proving that the value returned by \texttt{smallest\_nonmember} is indeed not a member:
+As for the na\"{\i}ve colouring, the proof of correctness depends on showing two things: the colour selected for a new vertex will not conflict with any of its neighbours, and the updated colouring will be valid for all vertices whose colours have already been assigned. The first of these amounts to proving that the value returned by \texttt{smallest\_nonmember} is indeed not a member:
 
 \begin{alltt}\small
 	\HOLTokenTurnstile{} \HOLConst{smallest_nonmember} \HOLFreeVar{n} \HOLFreeVar{list} \HOLTokenNotIn{} \HOLConst{set} \HOLFreeVar{list}
@@ -1258,7 +1206,7 @@ The proof of this statement was fairly complex, making use of several of the lem
    \HOLConst{duplicate_free} \HOLFreeVar{list}
 \end{alltt}
 
-To prove the antecedent of this it was necessary to use several of the lemmas about duplicate-freeness of conflicting sets along with the fact that a list being duplicate-free means no elements are equal:
+To prove the antecedent of this it was necessary to use several of the lemmas about duplicate-freeness of conflicting sets along with the fact that a list being duplicate-free means no elements are equal (again from Section~\ref{sec:duplicateFree}):
 
 \begin{alltt}\small
 	\HOLTokenTurnstile{} \HOLConst{duplicate_free} \HOLFreeVar{list} \HOLTokenConj{} \HOLFreeVar{x} \HOLTokenLt{} \HOLConst{LENGTH} \HOLFreeVar{list} \HOLTokenConj{} \HOLFreeVar{y} \HOLTokenLt{} \HOLConst{LENGTH} \HOLFreeVar{list} \HOLTokenConj{}
@@ -1278,7 +1226,6 @@ This is almost enough to prove the original goal. The next key lemma proves that
 
 To verify this it was first necessary to show that a satisfactory colouring has the desired behaviour on a single vertex:
 
-[colouring_satisfactory_on_one_vertex]
 \begin{alltt}\small
 	\HOLTokenTurnstile{} \HOLConst{colouring_satisfactory} \HOLFreeVar{c} \HOLFreeVar{cs} \HOLTokenConj{} \HOLConst{MEM} (\HOLFreeVar{r},\HOLFreeVar{rs}) \HOLFreeVar{cs} \HOLTokenImp{}
    \HOLFreeVar{c} \HOLFreeVar{r} \HOLTokenNotIn{} \HOLConst{set} (\HOLConst{MAP} \HOLFreeVar{c} \HOLFreeVar{rs})

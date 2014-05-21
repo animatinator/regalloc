@@ -839,6 +839,12 @@ val _ = Hol_datatype `
     spill_inst = Load of num=>num | Store of num=>num
     | ThreeAddr of num=>num=>num`
 
+val to_spill_inst_def = Define `
+    (to_spill_inst [] = []) /\
+    (to_spill_inst ((Inst w r1 r2)::code) =
+    		   (ThreeAddr w r1 r2)::(to_spill_inst code))
+`
+
 val merge_def = Define `
     (merge (r, s) K = (\x . if x >= K then s x else r x))
 `
@@ -848,14 +854,27 @@ val split_def = Define `
     ((\x . if x < K then r x else 0), (\x . if x >= K then r x else 0)))
 `
 
+val split_store_equality = prove(``
+! s (x:num) (K:num) .
+s = (\x . if (x >= K) then (s x) else if (x < K) then (s x) else 0)
+``,
+REPEAT STRIP_TAC THEN
+Tactical.REVERSE (
+`!x . s x = (\x . if (x >= K') then (s x) else if (x < K') then (s x) else 0) x`
+	by ALL_TAC) THEN1 IMP_RES_TAC EQ_EXT THEN
+REPEAT STRIP_TAC THEN
+Cases_on `x >= K'` THEN1 (EVAL_TAC THEN FULL_SIMP_TAC bool_ss []) THEN
+EVAL_TAC THEN FULL_SIMP_TAC arith_ss [])
+
+
 val eval_stack_def = Define `
-    (eval_stack f r s K [] = merge (r, s) K) /\
-    (eval_stack f r s K ((Load reg mem)::code) =
-    		eval_stack f ((reg =+ s mem) r) s K code) /\
-    (eval_stack f r s K ((Store mem reg)::code) =
-    		eval_stack f r ((mem =+ r reg) s) K code) /\
-    (eval_stack f r s K ((ThreeAddr w r1 r2)::code) =
-    		eval_stack f ((w =+ f (r r1) (r r2)) r) s K code)
+    (eval_stack f (r, s) K [] = merge (r, s) K) /\
+    (eval_stack f (r, s) K ((Load reg mem)::code) =
+    		eval_stack f (((reg =+ s mem) r), s) K code) /\
+    (eval_stack f (r, s) K ((Store mem reg)::code) =
+    		eval_stack f (r, ((mem =+ r reg) s)) K code) /\
+    (eval_stack f (r, s) K ((ThreeAddr w r1 r2)::code) =
+    		eval_stack f (((w =+ f (r r1) (r r2)) r), s) K code)
 `
 
 (* Make sure the result of an instruction goes to a temporary variable which is
@@ -868,11 +887,29 @@ val spill_stores_def = Define `
     (spill_stores K ((Load d s)::code) = (Load d s)::(spill_stores K code)) /\
     (spill_stores K ((Store d s)::code) = (Store d s)::(spill_stores K code))`
 
+``
+! f s code K .
+eval f s code = eval_stack f (split s K) K (spill_stores K (to_spill_inst code))
+``
+Induct_on `code` THEN1 (
+    FULL_SIMP_TAC bool_ss [to_spill_inst_def, spill_stores_def,
+    		  eval_def, split_def, eval_stack_def, merge_def] THEN
+    METIS_TAC [split_store_equality]) THEN
+REPEAT STRIP_TAC THEN
+Cases_on `h` THEN
+FULL_SIMP_TAC std_ss [eval_def] THEN
+FULL_SIMP_TAC std_ss [to_spill_inst_def, spill_stores_def] THEN
+Cases_on `n >= K'` THEN1 (
+	 FULL_SIMP_TAC bool_ss [] THEN
+	 FULL_SIMP_TAC bool_ss [split_def, eval_stack_def]
+)
+
+
 (* Ensure registers which are spilled to memory are loaded to temporaries
 before use *)
 val spill_loads_def = Define `
     (spill_loads K [] = []) /\
-    (spill_loads K ((Inst w r1 r2)::code) =
+    (spill_loads K ((ThreeAddr w r1 r2)::code) =
     if (r1 >= K /\ r2 >= K) then
        (Load (K+1) r1)::(Load (K+2) r2)::(ThreeAddr w (K+1) (K+2))
        	     ::(spill_loads K code)
@@ -880,7 +917,9 @@ val spill_loads_def = Define `
        (Load (K+1) r1)::(ThreeAddr w (K+1) r2)::(spill_loads K code)
     else if (r2 >= K) then
        (Load (K+2) r2)::(ThreeAddr w r1 (K+2))::(spill_loads K code)
-    else (ThreeAddr w r1 r2)::(spill_loads K code))
+    else (ThreeAddr w r1 r2)::(spill_loads K code)) /\
+    (spill_loads K ((Load d s)::code) = (Load d s)::(spill_loads K code)) /\
+    (spill_loads K ((Store d s)::code) = (Store d s)::(spill_loads K code))
 `
 
 val spill_loads_stores_def = Define `
@@ -894,18 +933,6 @@ EVAL_TAC THEN
 REPEAT STRIP_TAC THEN
 FULL_SIMP_TAC arith_ss [] THEN
 METIS_TAC [])
-
-val split_store_equality = prove(``
-! s (x:num) (K:num) .
-s = (\x . if (x >= K) then (s x) else if (x < K) then (s x) else 0)
-``,
-REPEAT STRIP_TAC THEN
-Tactical.REVERSE (
-`!x . s x = (\x . if (x >= K') then (s x) else if (x < K') then (s x) else 0) x`
-	by ALL_TAC) THEN1 IMP_RES_TAC EQ_EXT THEN
-REPEAT STRIP_TAC THEN
-Cases_on `x >= K'` THEN1 (EVAL_TAC THEN FULL_SIMP_TAC bool_ss []) THEN
-EVAL_TAC THEN FULL_SIMP_TAC arith_ss [])
 
 val split_correctness = prove(``
 ! s K r m .
