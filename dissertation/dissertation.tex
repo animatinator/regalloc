@@ -64,7 +64,7 @@ document, although without care this can appear formulaic
 and tedious. Your call. 
 
 
-\chapter{Background} 
+\chapter{Background} \label{sec:background}
 
 \section {The problem of register allocation}
 
@@ -122,7 +122,7 @@ allocation so that these move instructions can be eliminated wherever possible.
 
 The most common approach to register allocation is to reduce the problem to one of graph
 colouring, where we have a graph which we wish to colour with a maximum of K colours such
-that no two adjacent vertices share the same colour (TODO ref). Given the knowledge of which
+that no two adjacent vertices share the same colour (\cite{wolframGraphColouring}). Given the knowledge of which
 variables are live at the same time, we construct a clash graph in which the vertices
 represent registers and an edge between two vertices exists where the corresponding
 registers are simultaneously live. Treating a colour as representing a physical register
@@ -135,7 +135,7 @@ register. Formally verifying that the colouring resulting from this process will
 affect the behaviour of the code being compiled was the core objective of this project.
 
 The K-colourability problem is known to be NP-complete wherever K is greater than two,
-and so finding a truly optimal solution is rarely feasible in practice. Instead,
+and so finding a truly optimal solution is rarely feasible in practice (as discussed in \cite{graphColouringComplexity}). Instead,
 register allocation algorithms are designed primarily to find a solution which is
 correct, and from there use heuristics to find a solution which is as optimal as
 can be achieved in reasonable time. There are several approaches to this, and many
@@ -148,7 +148,7 @@ simple.
 
 The simplest way of colouring a graph is to take each vertex in turn and assign
 it a new colour until all vertices have been coloured. This approach is guaranteed
-to generate a valid colouring (as verified in Section (TODO section)), but is also very
+to generate a valid colouring (as verified in Section~\ref{sec:naiveColouring}), but is also very
 inefficient as registers are never re-used for variables which could reside in the
 same register. In a system with few physical registers this will result in registers
 being spilled to memory, and as the order colours are assigned is arbitrary this could
@@ -186,7 +186,7 @@ the end will be easier to colour without assigning new colours. There are also a
 variations on this: saturation degree ordering, for instance, picks the next vertex to
 colour based on which vertex is currently adjacent to the most different colours.
 Incidence degree colouring is another variant which sorts based on the number of adjacent
-vertices which have already been coloured (TODO ref).
+vertices which have already been coloured (\cite{degreeHeuristics}).
 
 A more complex heuristic, which is useful when attempting to colour with at most K colours,
 is to pick at each stage the vertex of highest degree less than K (this constraint on its
@@ -233,7 +233,7 @@ algorithm to generate clash graphs was verified. This chapter explores the repre
 used, the way `colouring' registers was represented and the development and verification
 of the clash graph generator, along with the way a `correct' register allocation was defined.
 The proofs showing that these definitions are correct and linking them to the project's overall
-goal will follow in Chapter (TODO: bringing everything together).
+goal will follow in Chapter \ref{sec:bringingTogether}.
 
 \section{Three-address code representation}
 
@@ -260,7 +260,7 @@ For the main verification task, this was entirely satisfactory as it captures al
 information needed. Later work extended this representation slightly: for instance, the
 addition of preferences meant it was necessary to include move instructions so that these
 could be used to compute preference graphs. Extensions to the three-address representation
-are discussed in Chapter (TODO: extensions chapter).
+are discussed in Chapter \ref{sec:extensions}.
 
 Code blocks were then represented as simple lists of these instructions, to simplify
 verification. The extension to more complex code featuring basic blocks is not too great
@@ -273,8 +273,7 @@ As mentioned, it was not necessary for verification to have a wide range of inst
 The register allocation can be proven correct simply by showing that evaluating each
 instruction with an arbitrary binary operator and storing the result in the destination
 register has the same effect as it did before allocation. The precise meaning of `has
-the same effect' is explained in Section (TODO bringing together - proving stuff about code
-evaluation), where it is proven to hold for the register allocator built during this project.
+the same effect' is explained in Section~\ref{sec:overallCorrectnessProof}, where it is proven to hold for the register allocator built during this project.
 The evaluation function used is given below:
 
 \begin{alltt}\small
@@ -297,7 +296,7 @@ as a `colouring', in keeping with the focus on graph-colouring approaches, mappi
 to registers. It thus made sense simply to use a total function of type $num \rightarrow num$.
 This made it very easy to later define properties of colourings -- most importantly, the notion
 of a colouring not mapping conflicting virtual registers to the same target register. This
-definition is discussed in Section (TODO: LVA-colouring_ok).
+definition is discussed in Section~\ref{sec:colouringOk}.
 
 Applying a colouring is then very simple: the function iterates through instructions,
 applying the colouring function to each register as it goes. The definition is given below:
@@ -319,7 +318,7 @@ to simplify definitions and proofs, and many of the properties proved of such se
 which were vital in later proofs. Verifying a clash graph generator was then handled
 in two stages: first, a live variable analysis was implemented and proven correct. A
 clash graph generator was then developed using the live variable analysis, and various
-important properties were verified to aid later proofs. Section (TODO: LVA-colouring_ok_def)
+important properties were verified to aid later proofs. Section~\ref{sec:colouringOk}
 details how the correctness of a generated colouring was defined, a definition which was
 fundamental to the rest of the project.
 
@@ -333,7 +332,7 @@ lists allow for an ordering to exist, which was particularly useful when applyin
 heuristics to vertices of clash graphs. The downside was that a number of properties
 of sets had to be verified, and showing that various set operations preserved its
 duplicate-freeness took a lot of extra effort. (The necessary proofs and definitions
-related to duplicate-freeness are given in Section (TODO: colouring_ok_def - duplicate_free stuff).)
+related to duplicate-freeness are given in Section~\ref{sec:duplicateFree}.)
 
 The two basic operations on sets are insertion and deletion of elements. The definitions of these for `list sets' are given below:
 
@@ -416,7 +415,7 @@ As mentioned earlier, the decision to represent a block of code as a simple list
 \HOLConst{insert} \HOLFreeVar{r\sb{\mathrm{1}}} (\HOLConst{insert} \HOLFreeVar{r\sb{\mathrm{2}}} (\HOLConst{delete} \HOLFreeVar{w} (\HOLConst{get_live} \HOLFreeVar{code} \HOLFreeVar{live})))
 \end{alltt}
 
-This is an implementation of the liveness equation given in Section (TODO background bit), which also allows for some variables to be live at the end of the program (which can be used to link together analyses for adjacent blocks of code, or specify which registers hold program results). Showing that this definition is correct is subtle: correctness with respect to register allocation is shown later by demonstrating that colourings satisfying constraints built up from this definition will not change code behaviour. However, another way of showing correctness is by proving that only the variables returned by \texttt{get_live} will affect the evaluation of a program, a property which is stated below:
+This is an implementation of the liveness equation given in Section~\ref{sec:background}, which also allows for some variables to be live at the end of the program (which can be used to link together analyses for adjacent blocks of code, or specify which registers hold program results). Showing that this definition is correct is subtle: correctness with respect to register allocation is shown later by demonstrating that colourings satisfying constraints built up from this definition will not change code behaviour. However, another way of showing correctness is by proving that only the variables returned by \texttt{get_live} will affect the evaluation of a program, a property which is stated below:
 
 \begin{alltt}\small
 	\HOLTokenTurnstile{} (\HOLConst{MAP} \HOLFreeVar{s} (\HOLConst{get_live} \HOLFreeVar{code} \HOLFreeVar{live}) = \HOLConst{MAP} \HOLFreeVar{t} (\HOLConst{get_live} \HOLFreeVar{code} \HOLFreeVar{live})) \HOLTokenImp{}
@@ -429,7 +428,7 @@ The antecedent states that the two stores $s$ and $t$ agree on the variables whi
 
 In order to be able to prove that generated colourings are correct, and that correct colouring do not affect code behaviour, defining the concept of a `correct' colouring was essential. Fundamentally, a valid colouring is one which will not map two simultaneously live variables to the same target register. That is to say, for the set of variables live at any given instruction, mapping the colouring over them will not result in any duplicates. To facilitate this sort of definition, the property of being duplicate-free was defined as a function and a number of properties were proven of this. These are outlined in the next subsection.
 
-\subsubsection{Duplicate-freeness and associated lemmas}
+\subsubsection{Duplicate-freeness and associated lemmas} \label{sec:duplicateFree}
 
 Duplicate-freeness of a list was defined using the following function:
 
@@ -498,7 +497,7 @@ Finally, the following useful property was proved:
 
 This states that if the result of mapping a function over a list is duplicate-free, and two elements of the original list are not equal, then the function maps them to different things. This lemma was particularly useful in proving injectivity properties of valid colourings later. The proof is by induction on the list $live$, where in the inductive case we expand the definitions and case split on whether $x$ or $y$ is equal to the current head of the list. In either case, the other must be behind in the list and inequality of $c x$ and $c y$ follows by the definition of duplicate-freeness.
 
-\subsubsection{Basic definition of colouring correctness}
+\subsubsection{Basic definition of colouring correctness} \label{sec:colouringOk}
 
 As discussed earlier, a colouring is deemed `correct' if for any instruction's set of live variables, the result of mapping the colouring function over it is duplicate-free. This is relatively easy to define:
 
@@ -518,9 +517,9 @@ An important property of colouring correctness is that it is also correct for a 
 
 This definition works nicely for the proofs involving working directly with three-address code, and was used for most of the later proofs regarding code evaluation behaviour. However, it is very strongly tied to the code definitions and doesn't clearly reflect the conflicts graph colouring is working with, making proofs relating graph colourings to valid register allocations particularly difficult.
 
-For this reason, an alternative definition of \texttt{colouring\_ok} was created and proved to be equivalent to the original definition. This alternative definition was much easier to work with when reasoning about clash graphs, as demonstrated later in Section (TODO bringing together - satisfactory implies ok).
+For this reason, an alternative definition of \texttt{colouring\_ok} was created and proved to be equivalent to the original definition. This alternative definition was much easier to work with when reasoning about clash graphs, as demonstrated later in Section~\ref{sec:satisfactoryImpliesOk}.
 
-\subsubsection{Alternative \texttt{colouring\_ok} definition}
+\subsubsection{Alternative \texttt{colouring\_ok} definition} \label{sec:colouringOkDefEquivalence}
 
 The alternative colouring_ok definition was designed to be slightly more abstract than the original one: rather than directly working with \texttt{get_live}, it uses a function \texttt{colouring\_respects\_conflicting\_sets} to determine whether a colouring respects an arbitrary list of conflicting sets. Here we say a colouring respects a conflicting set if mapping it over the elements of the set produces a duplicate-free result. The definition of this function is given below:
 
@@ -556,7 +555,7 @@ With this in hand, \texttt{colouring\_ok\_alt} can be defined by passing the res
   (\HOLConst{conflicting_sets} \HOLFreeVar{code} \HOLFreeVar{live})
 \end{alltt}
 
-The advantage of abstracting details in this way is that we can prove properties of \texttt{conflicting\_sets} and \texttt{colouring\_respects\_conflicting\_sets} which allow us to avoid working directly with instructions altogether. This makes it easier to make changes to the way code is represented, as is done for some of the extensions in Chapter (TODO extensions).
+The advantage of abstracting details in this way is that we can prove properties of \texttt{conflicting\_sets} and \texttt{colouring\_respects\_conflicting\_sets} which allow us to avoid working directly with instructions altogether. This makes it easier to make changes to the way code is represented, as is done for some of the extensions in Chapter \ref{sec:extensions}.
 
 For these two definitions to be used interchangeably in proofs, it was necessary to prove that they were equivalent:
 
@@ -566,7 +565,7 @@ For these two definitions to be used interchangeably in proofs, it was necessary
 
 The proof is a trivial induction where the inductive case is shown by simplification.
 
-\subsection{Clash graph generation}
+\subsection{Clash graph generation} \label{sec:clashGraphFromSets}
 
 With the verified live variable analysis complete, the next step was to use this to generate clash graphs which could be fed to the graph colouring algorithms, and to verify that these graphs accurately reflected the register conflicts present in the code.
 
@@ -608,7 +607,7 @@ We can then show that filtering this set yields a duplicate-free set using the f
 
 The goal then follows as the flattening union function and deletion both preserve duplicate-freeness.
 
-\subsubsection{Constructing the graph}
+\subsubsection{Constructing the graph} \label{sec:constructingClashGraph}
 
 Once the function to determine a register's conflicts had been defined, the function to construct the whole graph was fairly simple to construct:
 
@@ -637,9 +636,9 @@ Note that this is trivially duplicate-free where $live$ is duplicate-free, becau
    \HOLConst{duplicate_free} (\HOLConst{get_registers} \HOLFreeVar{code} \HOLFreeVar{live})
 \end{alltt}
 
-\subsubsection{Proof of correctness}
+\subsubsection{Proof of correctness} \label{sec:clashGraphCorrectness}
 
-This section contains the necessary proofs demonstrating that the clash graph generator works as it should. Three properties were shown: registers not included in the results of \texttt{get\_registers} do not feature in any program instruction, in \texttt{get\_live} or in any conflicting set (and so no vertices are missing from the graph), registers do not conflict with themselves, and any pair of registers in the same conflicting set will appear in each other's list of conflicts. These theorems are revisited later in Section (TODO bringing it all together), where they are used to help connect the graph colouring proofs to the proofs about code and prove the overall goal of the project.
+This section contains the necessary proofs demonstrating that the clash graph generator works as it should. Three properties were shown: registers not included in the results of \texttt{get\_registers} do not feature in any program instruction, in \texttt{get\_live} or in any conflicting set (and so no vertices are missing from the graph), registers do not conflict with themselves, and any pair of registers in the same conflicting set will appear in each other's list of conflicts. These theorems are revisited later in Chapter~\ref{sec:bringingTogether}, where they are used to help connect the graph colouring proofs to the proofs about code and prove the overall goal of the project.
 
 The first thing to prove was that registers not included in \texttt{get\_registers} are never used in any program instruction:
 
@@ -704,7 +703,7 @@ The proof depends on the following lemma, which states that if a list of lists i
 
 This can be shown by induction, case splitting on whether the current list head is equal to the list containing $x$. The goal above now follows by using this lemma to show that both registers appear in the result of filtering conflicting sets by membership, and by simplifying definitions they can be shown to appear in the overall result of \texttt{conflicts\_for\_register}.
 
-This concludes the proof of correctness of the clash graph generator. These theorems will be used later to help prove the overall correctness of the register allocator in Section (TODO bringing it all together).
+This concludes the proof of correctness of the clash graph generator. These theorems will be used later to help prove the overall correctness of the register allocator in Chapter~\ref{sec:bringingTogether}.
 
 
 \chapter{Colouring algorithms}
@@ -715,9 +714,9 @@ The core verification task of this project is, of course, to prove the correctne
 
 \section{Modelling colouring correctness}
 
-\subsection{Defining correctness}
+\subsection{Defining correctness} \label{sec:colouringSatisfactory}
 
-Much as correctness of colouring was defined in terms of code with \texttt{colouring\_ok} and \texttt{colouring\_ok\_alt}, correctness with respect to a clash graph was defined through the function \texttt{colouring\_satisfactory}\footnote{The proof that this is equivalent follows in Section (TODO bringing it all together)}:
+Much as correctness of colouring was defined in terms of code with \texttt{colouring\_ok} and \texttt{colouring\_ok\_alt}, correctness with respect to a clash graph was defined through the function \texttt{colouring\_satisfactory}\footnote{The proof that this is equivalent follows in Chapter~\ref{sec:bringingTogether}}:
 
 \begin{alltt}\small
 	\HOLConst{colouring_satisfactory} \HOLFreeVar{col} [] \HOLTokenEquiv{} \HOLConst{T}
@@ -743,9 +742,9 @@ This specifies that a vertex cannot be linked to itself, and the set of vertices
 \HOLConst{EVERY} (\HOLTokenLambda{}\HOLBoundVar{x}. \HOLConst{edge_list_well_formed} \HOLBoundVar{x}) \HOLFreeVar{es}
 \end{alltt}
 
-In Section (TODO bringing it all together - generated graphs have required properties), the proof that graphs generated by get_conflicts have these required properties is described, but for now it is assumed that they will hold of any graph passed in to the colouring algorithms.
+In Section~\ref{sec:generatedGraphsCorrect}, the proof that graphs generated by get_conflicts have these required properties is described, but for now it is assumed that they will hold of any graph passed in to the colouring algorithms.
 
-\section{Naive graph colouring}
+\section{Naive graph colouring} \label{sec:naiveColouring}
 
 A very naive graph colouring algorithm was verified first to obtain a complete proof as early into the project as possible which could be built upon later. This section describes the definition and verification of this simple colouring approach.
 
@@ -895,7 +894,7 @@ It is now possible to prove the original statement of \texttt{naive\_colouring\_
    \HOLTokenForall{}\HOLBoundVar{n}. \HOLConst{colouring_satisfactory} (\HOLConst{naive_colouring_aux} \HOLFreeVar{cs} \HOLBoundVar{n}) \HOLFreeVar{cs}
 \end{alltt}
 
-As mentioned when defining \texttt{colouring\_satisfactory} in Section (TODO defining colouring\_satisfactory), proving a colouring satisfactory consists of two goals: showing that an update doesn't violate the constraints on its vertex, and showing that if the previous colouring was valid for the rest of the graph then the updated one will be too. This latter goal follows from the lemma proved earlier:
+As mentioned when defining \texttt{colouring\_satisfactory} in Section~\ref{sec:colouringSatisfactory}, proving a colouring satisfactory consists of two goals: showing that an update doesn't violate the constraints on its vertex, and showing that if the previous colouring was valid for the rest of the graph then the updated one will be too. This latter goal follows from the lemma proved earlier:
 
 \begin{alltt}\small
 	\HOLTokenTurnstile{} \HOLConst{graph_edge_lists_well_formed} \HOLFreeVar{cs} \HOLTokenConj{}
@@ -1013,7 +1012,7 @@ The two algorithms developed so far work reasonably well in practice, but can be
 
 \subsection{Modelling heuristics}
 
-A convenient approach to heuristics, inspired by (TODO ref), is to break the overall algorithm into two steps. The first of these re-orders the list of vertices in the clash graph according to some heuristic, and the second is a colouring stage such as the lowest-first algorithm verified in the last section. This means that a heuristic is correct if and only if the set of vertices after applying the heuristic is the same as the set before. Clash graphs have no duplicate vertices (this follows from the proof that the list of all registers is duplicate-free, given in Section (TODO)), and so converting the set list into a set to test this property will not lose information. This notion is captured succinctly by the following definition:
+A convenient approach to heuristics, inspired by \cite{classicalGraphColouring}, is to break the overall algorithm into two steps. The first of these re-orders the list of vertices in the clash graph according to some heuristic, and the second is a colouring stage such as the lowest-first algorithm verified in the last section. This means that a heuristic is correct if and only if the set of vertices after applying the heuristic is the same as the set before. Clash graphs have no duplicate vertices (this follows from the proof that the list of all registers is duplicate-free, given in Section~\ref{sec:constructingClashGraph}), and so converting the set list into a set to test this property will not lose information. This notion is captured succinctly by the following definition:
 
 \begin{alltt}\small
 	\HOLConst{heuristic_application_ok} \HOLFreeVar{f} \HOLTokenEquiv{} \HOLTokenForall{}\HOLBoundVar{list}. \HOLConst{set} (\HOLFreeVar{f} \HOLBoundVar{list}) = \HOLConst{set} \HOLBoundVar{list}
@@ -1073,11 +1072,11 @@ As a simple example, consider the following heuristic function which calculates 
 
 Using this as the sort function with \texttt{heuristic\_sort} will sort vertices according to degree, a common heuristic used when colouring graphs. Its correctness now follows trivially from the theorems proved above.
 
-Many other sort-based heuristics are possible. For instance, if only a finite number of registers are available (a situation which is explored in Section (TODO extensions - finite registers)), we might want to prioritise registers which are frequently accessed for register storage and spill those which are used less often. In this case, the clash graph generator could simply tag vertices with the number of times they are accessed in the code, and this could be used in a heuristic sort to order vertices according to how often they are accessed.
+Many other sort-based heuristics are possible. For instance, if only a finite number of registers are available (a situation which is explored in Section \ref{sec:extensionsFiniteRegisters}), we might want to prioritise registers which are frequently accessed for register storage and spill those which are used less often. In this case, the clash graph generator could simply tag vertices with the number of times they are accessed in the code, and this could be used in a heuristic sort to order vertices according to how often they are accessed.
 
 \subsection{More complex heuristics}
 
-Several more elaborate heuristics are possible. The main one explored in this project is used quite frequently where there are finitely many registers available, and consists of picking at each stage the vertex with the lowest degree, removing it from the graph and placing it on a stack. This is repeated until no registers remain, and registers are then popped off the stack and coloured one at a time. This is very similar to a highest-degree-first heuristic such as the one in the last subsection, but with the advantage that the ordering takes into account which vertices will already be colourable at each stage. This is known to produce a better ordering that a normal highest-degree-first ordering (TODO ref?).
+Several more elaborate heuristics are possible. The main one explored in this project is used quite frequently where there are finitely many registers available, and consists of picking at each stage the vertex with the lowest degree, removing it from the graph and placing it on a stack. This is repeated until no registers remain, and registers are then popped off the stack and coloured one at a time. The heuristic is described in \cite{smallestLastOrdering}, and is very similar to a highest-degree-first heuristic such as the one in the last subsection, but with the advantage that the ordering takes into account which vertices will already be colourable at each stage. This is known to produce a better ordering than a normal highest-degree-first ordering (\cite{classicalGraphColouring}).
 
 This was implemented using a set of vertices which have already been considered, and writing the sort function so that it ignores them in counting the degree of a vertex. The sorting code is as follows:
 
@@ -1169,7 +1168,7 @@ The next step was to equate the set returned by the heuristic with the sets of e
 This again used the custom induction rule. The base case was relatively simple, but the induction case required more work. The trick was to case split on whether the arbitrary $x$ was equal to the current value at the top of the vertex list, in which case the goal follows easily by simplifying. In the other situation, a case split was performed on whether $x$ belongs to the accumulator. If it does, it trivially exists in the result by the lemma proved earlier. Otherwise, we case split again to see whether it belongs to the tail of the list of vertices passed in. In either case, the required goal follows by expanding definitions and using the earlier lemma stating that the sort function preserves the set of elements passed to it. Thus the proof was completed, and the heuristic was shown to be correct.
 
 
-\chapter{Bringing everything together}
+\chapter{Bringing everything together} \label{sec:bringingTogether}
 
 In this chapter, the properties verified of the algorithms developed in previous chapters are used to produce an overall proof of correctness for the whole algorithm. The result of this is a high-level proof which shows that applying these register allocation algorithms to a piece of code will yield code with exactly the same evaluation behaviour.
 
@@ -1179,7 +1178,7 @@ This consists of three main proofs. The first shows that graphs generated by the
 
 This section demonstrates that graphs generated by the clash graph generator have the necessary properties assumed by the colouring algorithms, and that a colouring deemed correct with respect to \texttt{colouring\_satisfactory} will also satisfy \texttt{colouring\_ok}. As all colouring algorithms were verified using \texttt{colouring\_satisfactory}, this indicates that they also satisfy \texttt{colouring\_ok} and therefore that the full algorithm generates colourings satisfying \texttt{colouring\_ok} for any code block.
 
-\subsection{Correctness of generated graphs}
+\subsection{Correctness of generated graphs} \label{sec:generatedGraphsCorrect}
 
 For the proofs about graph colouring correctness to be useful, it was necessary to show that the graphs being generated and passed in have the right well-formedness properties -- recall the definitions:
 
@@ -1204,7 +1203,7 @@ We first prove a simpler version of this, which states that the edge list for on
    \HOLConst{edge_list_well_formed} (\HOLFreeVar{r},\HOLConst{conflicts_for_register} \HOLFreeVar{r} \HOLFreeVar{code} \HOLFreeVar{live})
 \end{alltt}
 
-From the definition, we can see that this requires that a register does not appear in its own list of conflicts, and that the list of conflicts is duplicate-free. These two things were proven as lemmas in Section (TODO clash graph generation from conflicting sets):
+From the definition, we can see that this requires that a register does not appear in its own list of conflicts, and that the list of conflicts is duplicate-free. These two things were proven as lemmas in Section \ref{sec:clashGraphFromSets}:
 
 \begin{alltt}\small
 	\HOLTokenTurnstile{} \HOLFreeVar{r} \HOLTokenNotIn{} \HOLConst{set} (\HOLConst{conflicts_for_register} \HOLFreeVar{r} \HOLFreeVar{code} \HOLFreeVar{live})
@@ -1227,9 +1226,9 @@ The proof uses one more small lemma, which relates universal quantification of a
 
 The proof is a trivial induction. With this, the original goal can be proved by simplifying and using the above lemma to put the statement in the form used by the simplified goal.
 
-\subsection{Connecting \texttt{colouring_satisfactory} to \texttt{colouring_ok}}
+\subsection{Connecting \texttt{colouring_satisfactory} to \texttt{colouring_ok}} \label{sec:satisfactoryImpliesOk}
 
-The next task in the proof was to show that \texttt{colouring\_satisfactory}, the definition of correctness used in verifying graph colouring algorithms, implies \texttt{colouring\_ok}, the definition used when working directly with code. For this it was much more convenient to use the definition \texttt{colouring\_ok\_alt}, which was proved equivalent to \texttt{colouring\_ok} in Section (TODO colouring_ok_alt_def same as colouring_ok_def). The statement to be proved is given below:
+The next task in the proof was to show that \texttt{colouring\_satisfactory}, the definition of correctness used in verifying graph colouring algorithms, implies \texttt{colouring\_ok}, the definition used when working directly with code. For this it was much more convenient to use the definition \texttt{colouring\_ok\_alt}, which was proved equivalent to \texttt{colouring\_ok} in Section~\ref{sec:colouringOkDefEquivalence}. The statement to be proved is given below:
 
 \begin{alltt}\small
 	\HOLTokenTurnstile{} \HOLConst{duplicate_free} \HOLFreeVar{live} \HOLTokenImp{}
@@ -1250,7 +1249,7 @@ This ended up being fairly complicated to prove. Initially, a slightly simpler g
 
 This takes the usual assumption that the set of variables specified as live at the end of the code block is duplicate-free. The antecedent here states that for any register $r$ and colouring $col$, applying the colouring to $r$ doesn't conflict with the set of conflicts for $r$ - the coloured $r$ is not a member of the set of conflicts with the colouring mapped over it. As will be demonstrated formally later, this is a consequence of the colouring being satisfactory for the conflicts generated by \texttt{get\_conflicts} - in fact, it is essentially a rephrasing of it. The consequent, meanwhile, states that mapping the colouring over any conflicting set yields a duplicate-free result. This is simply the definition of \texttt{colouring\_respects\_conflicting\_sets} restated using \texttt{EVERY}, and is therefore a restatement of \texttt{colouring\_ok\_alt}. As will be demonstrated later, this goal is sufficient to prove the original goal.
 
-The proof of this statement was fairly complex, making use of several of the lemmas proved earlier. The approach used was to use the following lemma from Section (TODO) to show duplicate-freeness of each conflicting set after colouring:
+The proof of this statement was fairly complex, making use of several of the lemmas proved earlier. The approach used was to use the following lemma from Section~\ref{sec:duplicateFree} to show duplicate-freeness of each conflicting set after colouring:
 
 \begin{alltt}\small
 	\HOLTokenTurnstile{} (\HOLTokenForall{}\HOLBoundVar{x} \HOLBoundVar{y}.
@@ -1299,7 +1298,7 @@ The proof is trivial using simplification and evaluation, along with the HOL the
 	\HOLTokenTurnstile{} \HOLConst{MEM} \HOLFreeVar{x} (\HOLConst{MAP} \HOLFreeVar{f} \HOLFreeVar{l}) \HOLTokenEquiv{} \HOLTokenExists{}\HOLBoundVar{y}. (\HOLFreeVar{x} = \HOLFreeVar{f} \HOLBoundVar{y}) \HOLTokenConj{} \HOLConst{MEM} \HOLBoundVar{y} \HOLFreeVar{l}
 \end{alltt}
 
-Now the goal colouring_satisfactory_expansion can be verified. This makes use of the following lemma which was given in Section (TODO correctness of clash graphs), to avoid having to restrict the statement to registers which are used in the program:
+Now the goal \texttt{colouring\_satisfactory\_expansion} can be verified. This makes use of the following lemma which was given in Section~\ref{sec:clashGraphCorrectness}, to avoid having to restrict the statement to registers which are used in the program:
 
 \begin{alltt}\small
 	\HOLTokenTurnstile{} \HOLFreeVar{r} \HOLTokenNotIn{} \HOLConst{set} (\HOLConst{get_registers} \HOLFreeVar{code} \HOLFreeVar{live}) \HOLTokenImp{}
@@ -1312,7 +1311,7 @@ Thus we have verified that the antecedent of the overall goal implies the antece
 
 Therefore all colourings which satisfy colouring_satisfactory will also satisfy \texttt{colouring\_ok\_alt} and thus \texttt{colouring\_ok}. This gives a full end-to-end proof showing that the full register allocation algorithm generates a colouring which satisfies \texttt{colouring\_ok}. The remaining step in proving the project's overall goal is to show that a colouring satisfying \texttt{colouring\_ok} will not affect the behaviour of a block of code, and the proof of this is explained in the next section.
 
-\section{Overall proof of correctness}
+\section{Overall proof of correctness} \label{sec:overallCorrectnessProof}
 
 Now that the algorithm has been proven to generate colourings satisfying \texttt{colouring\_ok}, it remains to show that \texttt{colouring\_ok} is sufficient to prove that the code behaviour will be unchanged. This statement is as follows:
 
@@ -1390,7 +1389,7 @@ It was also useful to be able to state that if the result of mapping a colouring
    \HOLFreeVar{c} \HOLFreeVar{x} \HOLTokenNotEqual{} \HOLFreeVar{c} \HOLFreeVar{y}
 \end{alltt}
 
-This was proved in Section (TODO).
+This was proved in Section~\ref{sec:duplicateFree}.
 
 These last two lemmas make it possible to prove the following statement, which essentially states that a colouring satisfying \texttt{colouring\_ok} for a particular block of code is injective on the set of live variables for that code:
 
@@ -1417,7 +1416,7 @@ It is now possible to complete the proof of the original statement of correctnes
 The proof is by induction on the block of code, and uses all the lemmas above along with various definition expansions and some of the HOL lemmas regarding \texttt{MAP} and \texttt{MEM}. With this proved, it follows that the full register allocation algorithm is correct in that it doesn't affect code behaviour with respect to evaluation.
 
 
-\chapter{Extension features}
+\chapter{Extension features} \label{sec:extensions}
 
 \section*{Introduction}
 
@@ -1429,7 +1428,7 @@ Preference graphs are a solution to this: they link virtual registers which shou
 
 Another important consideration is the lack of infinite registers in real systems. This requires certain values to be spilled to memory, and as a result instructions have to be added to the code to load and store these spilled values. This extension largely amounted to generating these instructions and proving that the resulting behaviour is the same, and possible heuristics for the situation where some registers will be spilled are discussed.
 
-\section{Preference graphs}
+\section{Preference graphs} \label {sec:extensionsPreferenceGraphs}
 
 \subsection{Representation}
 
@@ -1554,7 +1553,7 @@ This leaves the code unchanged unless it finds a `move' instruction with equal s
 
 The proof of this is by induction, with a trivial base case. The inductive case follows by taking cases on the instruction type and the operator, with the only non-trivial case being a `move' instruction. Case-splitting on equality of source and destination gives two trivial goals which can be proved immediately by evaluation and simplification.
 
-\section{Finite registers and spilling}
+\section{Finite registers and spilling} \label{sec:extensionsFiniteRegisters}
 
 TODO
 
