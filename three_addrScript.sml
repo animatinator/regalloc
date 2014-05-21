@@ -854,7 +854,28 @@ val split_def = Define `
     ((\x . if x < K then r x else 0), (\x . if x >= K then r x else 0)))
 `
 
-val split_store_equality = prove(``
+val merge_split_identity = store_thm("merge_split_identity",
+``
+! s K . merge (split s K) K = s
+``,
+EVAL_TAC THEN
+REPEAT STRIP_TAC THEN
+FULL_SIMP_TAC arith_ss [] THEN
+METIS_TAC [])
+
+val split_correctness = store_thm("split_correctness",
+``
+! s K r m .
+(split s K = (r, m)) ==>
+(! x . x >= K ==> (m x = s x)) /\
+(! x . x < K ==> (r x = s x))
+``,
+REPEAT STRIP_TAC THEN
+FULL_SIMP_TAC std_ss [split_def] THEN
+METIS_TAC [])	   
+
+val split_store_equality = store_thm("split_store_equality",
+``
 ! s (x:num) (K:num) .
 s = (\x . if (x >= K) then (s x) else if (x < K) then (s x) else 0)
 ``,
@@ -887,22 +908,46 @@ val spill_stores_def = Define `
     (spill_stores K ((Load d s)::code) = (Load d s)::(spill_stores K code)) /\
     (spill_stores K ((Store d s)::code) = (Store d s)::(spill_stores K code))`
 
-``
-! f s code K .
-eval f s code = eval_stack f (split s K) K (spill_stores K (to_spill_inst code))
-``
-Induct_on `code` THEN1 (
-    FULL_SIMP_TAC bool_ss [to_spill_inst_def, spill_stores_def,
-    		  eval_def, split_def, eval_stack_def, merge_def] THEN
-    METIS_TAC [split_store_equality]) THEN
+val spilled_stores_correct = store_thm("spilled_stores_correct", ``
+! f s code K w r1 r2 .
+r1 < K /\ r2 < K ==>
+(eval f s [Inst w r1 r2] =
+eval_stack f (split s K) K (spill_stores K (to_spill_inst [Inst w r1 r2])))
+``,
 REPEAT STRIP_TAC THEN
-Cases_on `h` THEN
-FULL_SIMP_TAC std_ss [eval_def] THEN
-FULL_SIMP_TAC std_ss [to_spill_inst_def, spill_stores_def] THEN
-Cases_on `n >= K'` THEN1 (
+FULL_SIMP_TAC bool_ss [to_spill_inst_def, spill_stores_def] THEN
+Cases_on `w >= K'` THEN1 (
 	 FULL_SIMP_TAC bool_ss [] THEN
-	 FULL_SIMP_TAC bool_ss [split_def, eval_stack_def]
-)
+	 FULL_SIMP_TAC bool_ss [eval_def, split_def, eval_stack_def,
+	 	       merge_def] THEN
+	 EVAL_TAC THEN
+	 FULL_SIMP_TAC bool_ss [] THEN
+	 Tactical.REVERSE (`
+! x . ((w =+ f (s r1) (s r2)) s) x
+=
+(\x.
+       if x >= K' then if w = x then f (s r1) (s r2) else s x
+       else if K' = x then f (s r1) (s r2)
+       else if x < K' then s x
+       else 0) x
+` by ALL_TAC) THEN1 METIS_TAC [EQ_EXT] THEN
+        REPEAT STRIP_TAC THEN
+	EVAL_TAC THEN
+	Cases_on `w = x` THEN FULL_SIMP_TAC bool_ss [] THEN
+	Cases_on `x >= K'` THEN1 FULL_SIMP_TAC bool_ss [] THEN
+	FULL_SIMP_TAC arith_ss []) THEN
+FULL_SIMP_TAC bool_ss [eval_def, split_def, eval_stack_def, merge_def] THEN
+EVAL_TAC THEN
+Tactical.REVERSE (`
+! x . ((w =+ f (s r1) (s r2)) s) x =
+(\x . if x >= K' then s x else if w = x then f (s r1) (s r2)
+else if x < K' then s x else 0) x
+` by ALL_TAC) THEN1 METIS_TAC [EQ_EXT] THEN
+REPEAT STRIP_TAC THEN
+EVAL_TAC THEN
+Cases_on `w = x` THEN FULL_SIMP_TAC bool_ss [] THEN
+Cases_on `x >= K'` THEN FULL_SIMP_TAC bool_ss [] THEN
+FULL_SIMP_TAC arith_ss [])
 
 
 (* Ensure registers which are spilled to memory are loaded to temporaries
@@ -922,56 +967,43 @@ val spill_loads_def = Define `
     (spill_loads K ((Store d s)::code) = (Store d s)::(spill_loads K code))
 `
 
+val spilled_loads_correct = store_thm("spilled_loads_correct", ``
+! K w r1 r2 (r:num->num) (m:num->num) s f .
+w < K /\ r2 < K /\
+((r,m) = (split s K)) ==>
+(eval f s [Inst w r1 r2] =
+eval_stack f (r,m) K (spill_loads K (to_spill_inst [Inst w r1 r2])))
+``,
+REPEAT STRIP_TAC THEN
+FULL_SIMP_TAC bool_ss [eval_def, eval_stack_def, spill_loads_def,
+	      to_spill_inst_def] THEN
+FULL_SIMP_TAC arith_ss [] THEN
+Cases_on `r1 >= K'` THEN1 (
+	 FULL_SIMP_TAC bool_ss [] THEN
+	 EVAL_TAC THEN
+	 FULL_SIMP_TAC arith_ss [] THEN
+	 Tactical.REVERSE(`
+! x . ((w =+ f (s r1) (s r2)) s) x =
+(\x . if x >= K' then s x else if w = x then f (s r1) (s r2) else s x) x
+` by ALL_TAC) THEN1 METIS_TAC [EQ_EXT] THEN
+         REPEAT STRIP_TAC THEN
+	 EVAL_TAC THEN
+	 Cases_on `x >= K'` THEN FULL_SIMP_TAC arith_ss []) THEN
+FULL_SIMP_TAC bool_ss [] THEN
+EVAL_TAC THEN
+FULL_SIMP_TAC arith_ss [] THEN
+Tactical.REVERSE(`
+! x . (w =+ f (s r1) (s r2)) s x =
+(\x . if x >= K' then s x else if w = x then f (s r1) (s r2) else s x) x
+` by ALL_TAC) THEN1 METIS_TAC [EQ_EXT] THEN
+REPEAT STRIP_TAC THEN
+EVAL_TAC THEN
+Cases_on `x >= K'` THEN FULL_SIMP_TAC arith_ss [])
+
+
 val spill_loads_stores_def = Define `
     (spill_loads_stores K code = spill_stores K (spill_loads K code))
 `
-
-val merge_split_identity = prove(``
-! s K . merge (split s K) K = s
-``,
-EVAL_TAC THEN
-REPEAT STRIP_TAC THEN
-FULL_SIMP_TAC arith_ss [] THEN
-METIS_TAC [])
-
-val split_correctness = prove(``
-! s K r m .
-(split s K = (r, m)) ==>
-(! x . x >= K ==> (m x = s x)) /\
-(! x . x < K ==> (r x = s x))
-``,
-REPEAT STRIP_TAC THEN
-FULL_SIMP_TAC std_ss [split_def] THEN
-METIS_TAC [])
-
-(*``
-! f code s1 s2 K r m .
-((split s1 K) = (r, m)) ==>
-(eval f s1 code = eval_stack f r m K (spill_loads_stores K code))
-``
-Induct_on `code` THEN1 (
-	  EVAL_TAC THEN FULL_SIMP_TAC bool_ss []
-	  	   THEN METIS_TAC [split_store_equality]) THEN
-REPEAT STRIP_TAC THEN
-Cases_on `h` THEN
-EVAL_TAC THEN
-Cases_on `n0 >= K'` THEN1 (
-	 FULL_SIMP_TAC bool_ss [] THEN
-	 Cases_on `n1 >= K'` THEN1 (
-	 	  FULL_SIMP_TAC bool_ss [] THEN
-		  EVAL_TAC THEN
-		  Cases_on `n >= K'` THEN1 (
-		  	   FULL_SIMP_TAC bool_ss [] THEN
-			   EVAL_TAC THEN
-			   FULL_SIMP_TAC arith_ss [] THEN
-			   cheat
-		  ) THEN
-		  FULL_SIMP_TAC arith_ss [] THEN
-		  EVAL_TAC THEN
-		  FULL_SIMP_TAC arith_ss []
-	 )
-)*)
-	   
 
 
 val _ = export_theory();
