@@ -19,7 +19,7 @@
 \def\wordcount{TBC}
 
 
-\usepackage{epsfig,graphicx,parskip,setspace,tabularx,xspace,holtexbasic,alltt,proof}
+\usepackage{epsfig,graphicx,parskip,setspace,tabularx,xspace,url,holtexbasic,alltt,proof}
 
 %% START OF DOCUMENT
 \begin{document}
@@ -210,13 +210,13 @@ more exotic heuristics could also be verified without much additional effort.
 
 Although some considerable work has gone into the formal verification of programs, and more recently into the compilers themselves, the problem register allocation has not been explored in quite as much depth. However, there are nonetheless several related publications which attempt to formally verify register allocators (and, more generally, graph-colouring algorithms) in various different ways. In this section, a number of these approaches are described and compared, so as to give a background to the work undertaken for this project.
 
-There have been several recent approaches to formalising graph theory in a proof system like HOL. A notable example is (TODO 1), in which a full library of graph theory primitives is developed for the Isabelle proof system. More relevantly, (TODO 2) specifically discusses formalising graph colouring in Isabelle/HOL as it tackles the problem of verifying the five colour theorem. However, neither of these was found to be general enough to build upon for this project, and a pair customised graph representations was used, both of which were designed to best fit their applications.
+There have been several recent approaches to formalising graph theory in a proof system like HOL. A notable example is \cite{isabelleGraphs}, in which a full library of graph theory primitives is developed for the Isabelle proof system. More relevantly, \cite{5colourTheorem} specifically discusses formalising graph colouring in Isabelle/HOL as it tackles the problem of verifying the five colour theorem. However, neither of these was found to be general enough to build upon for this project, and a pair customised graph representations was used, both of which were designed to best fit their applications.
 
-A recent example of a verified register allocator is the one employed by the CompCert compiler (TODO 3), a compiler for a subset of the C language which has been formally verified in Coq. This was proven to never generate code with behaviour differing from the specified behaviour of the input code, and featured a graph-colouring register allocator whose output was checked by a formally verified algorithm designed to ensure the colouring was correct (TODO 4). However, it should be noted that although this ensures correct output, its purpose is to verify the output of an untrusted colouring algorithm by matching output instructions to corresponding input instructions and using live variable analysis to confirm that the results are correct. The algorithm itself is not formally verified, allowing for algorithms to be changed without needing to re-prove correctness (TODO 5).
+A recent example of a verified register allocator is the one employed by the CompCert compiler (\cite{compCert}), a compiler for a subset of the C language which has been formally verified in Coq. This was proven to never generate code with behaviour differing from the specified behaviour of the input code, and featured a graph-colouring register allocator whose output was checked by a formally verified algorithm designed to ensure the colouring was correct (\cite{compCertValidation}). However, it should be noted that although this ensures correct output, its purpose is to verify the output of an untrusted colouring algorithm by matching output instructions to corresponding input instructions and using live variable analysis to confirm that the results are correct. The algorithm itself is not formally verified, allowing for algorithms to be changed without needing to re-prove correctness (\cite{compCertRegAllocExplanation}).
 
-A more rigorous approach to proving correctness is given in (TODO 6), where a fully verified OCaml implementation of the common Iterated Register Coalescing algorithm (TODO 7) is demonstrated. This is a particularly strong example of a verified register allocator, and was ultimately implemented in CompCert. However, (TODO the proof is very tightly coupled?), making it difficult to modify to experiment with different heuristics or add features.
+A more rigorous approach to proving correctness is given in \cite{compCertRegAllocProof}, where a fully verified OCaml implementation of the common Iterated Register Coalescing algorithm (\cite{irc}) is demonstrated. This is a particularly strong example of a verified register allocator, and was ultimately implemented in CompCert. However, (TODO the proof is very tightly coupled?), making it difficult to modify to experiment with different heuristics or add features.
 
-The approach used in this project was to separate the sub-stages of allocation as cleanly as possible and build up towards an algorithm with similar performance to algorithms used in practice, arranging the proofs so that further improvements can be made and verified without much extra work. Although the algorithm verified is not quite as powerful as the IRC algorithm verified in (TODO 6), it represents a full end-to-end system where individual components can be improved with relative ease.
+The approach used in this project was to separate the sub-stages of allocation as cleanly as possible and build up towards an algorithm with similar performance to algorithms used in practice, arranging the proofs so that further improvements can be made and verified without much extra work. Although the algorithm verified is not quite as powerful as the IRC algorithm verified in \cite{compCertRegAllocProof}, it represents a full end-to-end system where individual components can be improved with relative ease.
 
 
 \chapter{Live variable analysis and clash graph generation}
@@ -1561,13 +1561,15 @@ TODO
 
 \chapter{Evaluation and conclusions}
 
-TODO~\cite{arrow_calculus}
+TODO
 
 
 
 
 \appendix
 \singlespacing
+
+\nocite{*}
 
 \bibliographystyle{plain}
 \bibliography{bibliography}
