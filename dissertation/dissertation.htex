@@ -6,6 +6,7 @@
 
 
 \documentclass[a4paper,12pt,twoside,openright]{report}
+\setcounter{tocdepth}{3}
 
 
 %%
@@ -1292,7 +1293,124 @@ The proof of this is by induction, with a trivial base case. The inductive case 
 
 \section{Finite registers and spilling} \label{sec:extensionsFiniteRegisters}
 
-TODO
+\subsection{Approach}
+
+The simplest approach to modelling spilling in this case was to specify a maximum number of registers $K$ and say that all allocated registers above that number are spilled. This leaves the colouring algorithms as they are, and the only change to be made is to add a phase which generates loads and stores in the target code.
+
+To model this, two `stores' were used instead of one. The first represents registers, and the second represents memory. Locations above or equal to $K$ are loaded from the memory store and those lower are loaded from the register store. Three registers -- $K$, $K+1$ and $K+2$ -- are set aside to be used as temporary register storage for the result and the two arguments, where needed. The code datatype was also updated to include load and store instructions:
+
+\begin{alltt}\small
+	\HOLthm{three_addr.datatype_spill_inst}
+\end{alltt}
+
+Instructions before this stage are assumed never to contain loads or stores, and so continue using the original code datatype. The following simple function converts normal code into code with loads and stores:
+
+\begin{alltt}\small
+	\HOLthm[def]{three_addr.to_spill_inst_def}
+\end{alltt}
+
+A new evaluation function was then defined for this augmented instruction type:
+
+\begin{alltt}\small
+	\HOLthm[def]{three_addr.eval_stack_def}
+\end{alltt}
+
+The \texttt{merge} function is used to combine memory and registers into one function, and is described in the next section.
+
+A pair of functions was then defined to generate loads and stores for spilled registers:
+
+\begin{alltt}\small
+	\HOLthm[def]{three_addr.spill_stores_def}
+	
+	\HOLthm[def]{three_addr.spill_loads_def}
+\end{alltt}
+
+The following function handles all instruction generation using the two functions:
+
+\begin{alltt}\small
+	\HOLthm[def]{three_addr.spill_loads_stores_def}
+\end{alltt}
+
+\subsection{Verification}
+
+Verification of this step consisted of proving that code with loads and stores has the same behaviour as code without. This was demonstrated independently for the cases where a result is stored in memory and for where a necessary argument is stored in memory, and was verified over execution of one arbitrary instruction (assuming the stores are equal before) rather than inductively on a block of code. This is trivially equivalent, but using this approach made the proof far clearer.
+
+A key part of the proof is the way equality of a purely register-based store and a store combining registers and memory is defined. As mentioned, the latter involves two stores, and so functions for converting between the two were defined:
+
+\begin{alltt}\small
+	\HOLthm[def]{three_addr.split_def}
+	
+	\HOLthm[def]{three_addr.merge_def}
+\end{alltt}
+
+
+The correctness of these two follows from the theorem below, which was proved using evaluation and expanding definitions:
+
+\begin{alltt}\small
+	\HOLthm{three_addr.merge_split_identity}
+\end{alltt}
+
+Furthermore, the following theorem demonstrates that \texttt{split} is correct in that it is equal to the original store on all values:
+
+\begin{alltt}\small
+	\HOLthm{three_addr.split_correctness}
+\end{alltt}
+
+This was again proved using evaluation and simplification.
+
+With these two functions proved correct, the correctness of generated stores was then verified:
+
+\begin{alltt}\small
+	\HOLthm{three_addr.spilled_stores_correct}
+\end{alltt}
+
+Note that this assumes that the stores used in both evaluations are equal with respect to the definition of split. It also assumes that the other two registers used are stored in registers, to simplify the proof. The proof then follows by expanding all definitions and demonstrating equality of the resulting stores by case splitting and using the following HOL axiom:
+
+\begin{alltt}\small
+	\HOLthm{bool.EQ_EXT}
+\end{alltt}
+
+The proof of correctness where one of the arguments has been spilled was very similar. The statement of correctness is given below:
+
+\begin{alltt}\small
+	\HOLthm{three_addr.spilled_loads_correct}
+\end{alltt}
+
+The proof for the other argument is near-identical.
+
+\subsection{Heuristics for spilling}
+
+A number of heuristics can be used to make sure the registers being spilled have as minimal an impact on performance as possible. For instance, one could spill the register which conflicts with the most others (to ensure fewer registers have to be spilled). Another would be to try and find registers which contain values computed once at the start of their live range but not used until many instructions later, as these would be prime candidates for storing in memory. Several other possible heuristics are discussed in (TODO ref).
+
+For this project, a relatively common one was verified: spill the virtual register which has the fewest uses. To implement this, a function was written which counts the number of uses of each register and creates a mapping from registers to uses. This function is given below:
+
+\begin{alltt}\small
+	\HOLthm[def]{three_addr.count_uses_def}
+\end{alltt}
+
+The function simply takes a list of all registers used in instructions, filters them to instances of the register in question and returns the length. It relies on the following auxiliary function which generates the list of used registers:
+
+\begin{alltt}\small
+	\HOLthm[def]{three_addr.flatten_used_registers_def}
+\end{alltt}
+
+The following function takes the information from \texttt{count\_uses} and uses it to create a mapping from registers to frequencies:
+
+\begin{alltt}\small
+	\HOLthm[def]{three_addr.get_uses_function_def}
+\end{alltt}
+
+A heuristic was then implemented which takes this function as well as the list of edge lists and sorts registers from least- to most-used:
+
+\begin{alltt}\small
+	\HOLthm[def]{colouring.most_used_last_heuristic_def}
+\end{alltt}
+
+As colouring works from the back of the list forwards, this will result in frequently-used registers being coloured first and thus being less likely to be spilled. The correctness of this function follows trivially from the fact that \texttt{QSORT} maintains the set passed into it:
+
+\begin{alltt}\small
+	\HOLthm{colouring.most_used_last_heuristic_ok}
+\end{alltt}
 
 
 \chapter{Evaluation and conclusions}

@@ -1024,7 +1024,7 @@ val count_uses_def = Define `
 `
 
 (* Returns a function mapping registers to the numbers of times they're used *)
-val get_uses_function = Define `
+val get_uses_function_def = Define `
     (get_uses_function code = (\r . count_uses r code))
 `
 

@@ -6,6 +6,7 @@
 
 
 \documentclass[a4paper,12pt,twoside,openright]{report}
+\setcounter{tocdepth}{3}
 
 
 %%
@@ -1490,7 +1491,167 @@ The proof of this is by induction, with a trivial base case. The inductive case 
 
 \section{Finite registers and spilling} \label{sec:extensionsFiniteRegisters}
 
-TODO
+\subsection{Approach}
+
+The simplest approach to modelling spilling in this case was to simply specify a maximum number of registers $K$ and say that all allocated registers above that number are spilled. This leaves the colouring algorithms as they are, and the only change to be made is to add a phase which generates loads and stores in the target code.
+
+To model this, two `stores' were used instead of one. The first represents registers, and the second represents memory. Locations above $K$ are loaded from the memory store and those lower are loaded from the register store. Three registers -- $K$, $K+1$ and $K+2$ -- are set aside to be used as temporary register storage for the result and the two arguments, where needed. The code datatype was also updated to include load and store instructions:
+
+\begin{alltt}\small
+	\HOLTyOp{spill_inst}
+  = \HOLConst{Load} \HOLKeyword{of}
+  \HOLTyOp{num} \HOLTokenImp{} \HOLTyOp{num}
+  \HOLTokenBar{} \HOLConst{Store} \HOLKeyword{of}
+  \HOLTyOp{num} \HOLTokenImp{} \HOLTyOp{num}
+  \HOLTokenBar{} \HOLConst{ThreeAddr} \HOLKeyword{of}
+  \HOLTyOp{num} \HOLTokenImp{} \HOLTyOp{num} \HOLTokenImp{} \HOLTyOp{num}
+\end{alltt}
+
+Instructions before this stage are assumed never to contain loads or stores, and so continue using the original code datatype. The following simple function converts normal code into code with loads and stores:
+
+\begin{alltt}\small
+	\HOLConst{to_spill_inst} [] = []
+\HOLConst{to_spill_inst} (\HOLConst{Inst} \HOLFreeVar{w} \HOLFreeVar{r\sb{\mathrm{1}}} \HOLFreeVar{r\sb{\mathrm{2}}}::\HOLFreeVar{code}) =
+\HOLConst{ThreeAddr} \HOLFreeVar{w} \HOLFreeVar{r\sb{\mathrm{1}}} \HOLFreeVar{r\sb{\mathrm{2}}}::\HOLConst{to_spill_inst} \HOLFreeVar{code}
+\end{alltt}
+
+A new evaluation function was then defined for this augmented instruction type:
+
+\begin{alltt}\small
+	\HOLConst{eval_stack} \HOLFreeVar{f} (\HOLFreeVar{r},\HOLFreeVar{s}) \HOLFreeVar{K} [] = \HOLConst{merge} (\HOLFreeVar{r},\HOLFreeVar{s}) \HOLFreeVar{K}
+\HOLConst{eval_stack} \HOLFreeVar{f} (\HOLFreeVar{r},\HOLFreeVar{s}) \HOLFreeVar{K} (\HOLConst{Load} \HOLFreeVar{reg} \HOLFreeVar{mem}::\HOLFreeVar{code}) =
+\HOLConst{eval_stack} \HOLFreeVar{f} ((\HOLFreeVar{reg} =+ \HOLFreeVar{s} \HOLFreeVar{mem}) \HOLFreeVar{r},\HOLFreeVar{s}) \HOLFreeVar{K} \HOLFreeVar{code}
+\HOLConst{eval_stack} \HOLFreeVar{f} (\HOLFreeVar{r},\HOLFreeVar{s}) \HOLFreeVar{K} (\HOLConst{Store} \HOLFreeVar{mem} \HOLFreeVar{reg}::\HOLFreeVar{code}) =
+\HOLConst{eval_stack} \HOLFreeVar{f} (\HOLFreeVar{r},(\HOLFreeVar{mem} =+ \HOLFreeVar{r} \HOLFreeVar{reg}) \HOLFreeVar{s}) \HOLFreeVar{K} \HOLFreeVar{code}
+\HOLConst{eval_stack} \HOLFreeVar{f} (\HOLFreeVar{r},\HOLFreeVar{s}) \HOLFreeVar{K} (\HOLConst{ThreeAddr} \HOLFreeVar{w} \HOLFreeVar{r\sb{\mathrm{1}}} \HOLFreeVar{r\sb{\mathrm{2}}}::\HOLFreeVar{code}) =
+\HOLConst{eval_stack} \HOLFreeVar{f} ((\HOLFreeVar{w} =+ \HOLFreeVar{f} (\HOLFreeVar{r} \HOLFreeVar{r\sb{\mathrm{1}}}) (\HOLFreeVar{r} \HOLFreeVar{r\sb{\mathrm{2}}})) \HOLFreeVar{r},\HOLFreeVar{s}) \HOLFreeVar{K} \HOLFreeVar{code}
+\end{alltt}
+
+The merge function is used to combine memory and registers into one function, and is described in the next section.
+
+A pair of functions was then defined to generate loads and stores for spilled registers:
+
+\begin{alltt}\small
+	\HOLConst{spill_stores} \HOLFreeVar{K} [] = []
+\HOLConst{spill_stores} \HOLFreeVar{K} (\HOLConst{ThreeAddr} \HOLFreeVar{w} \HOLFreeVar{r\sb{\mathrm{1}}} \HOLFreeVar{r\sb{\mathrm{2}}}::\HOLFreeVar{code}) =
+\HOLKeyword{if} \HOLFreeVar{w} \HOLTokenGeq{} \HOLFreeVar{K} \HOLKeyword{then} \HOLConst{ThreeAddr} \HOLFreeVar{K} \HOLFreeVar{r\sb{\mathrm{1}}} \HOLFreeVar{r\sb{\mathrm{2}}}::\HOLConst{Store} \HOLFreeVar{w} \HOLFreeVar{K}::\HOLConst{spill_stores} \HOLFreeVar{K} \HOLFreeVar{code}
+\HOLKeyword{else} \HOLConst{ThreeAddr} \HOLFreeVar{w} \HOLFreeVar{r\sb{\mathrm{1}}} \HOLFreeVar{r\sb{\mathrm{2}}}::\HOLConst{spill_stores} \HOLFreeVar{K} \HOLFreeVar{code}
+\HOLConst{spill_stores} \HOLFreeVar{K} (\HOLConst{Load} \HOLFreeVar{d} \HOLFreeVar{s}::\HOLFreeVar{code}) = \HOLConst{Load} \HOLFreeVar{d} \HOLFreeVar{s}::\HOLConst{spill_stores} \HOLFreeVar{K} \HOLFreeVar{code}
+\HOLConst{spill_stores} \HOLFreeVar{K} (\HOLConst{Store} \HOLFreeVar{d} \HOLFreeVar{s}::\HOLFreeVar{code}) =
+\HOLConst{Store} \HOLFreeVar{d} \HOLFreeVar{s}::\HOLConst{spill_stores} \HOLFreeVar{K} \HOLFreeVar{code}
+	
+	\HOLConst{spill_loads} \HOLFreeVar{K} [] = []
+\HOLConst{spill_loads} \HOLFreeVar{K} (\HOLConst{ThreeAddr} \HOLFreeVar{w} \HOLFreeVar{r\sb{\mathrm{1}}} \HOLFreeVar{r\sb{\mathrm{2}}}::\HOLFreeVar{code}) =
+\HOLKeyword{if} \HOLFreeVar{r\sb{\mathrm{1}}} \HOLTokenGeq{} \HOLFreeVar{K} \HOLTokenConj{} \HOLFreeVar{r\sb{\mathrm{2}}} \HOLTokenGeq{} \HOLFreeVar{K} \HOLKeyword{then}
+  \HOLConst{Load} (\HOLFreeVar{K} + 1) \HOLFreeVar{r\sb{\mathrm{1}}}::\HOLConst{Load} (\HOLFreeVar{K} + 2) \HOLFreeVar{r\sb{\mathrm{2}}}::
+      \HOLConst{ThreeAddr} \HOLFreeVar{w} (\HOLFreeVar{K} + 1) (\HOLFreeVar{K} + 2)::\HOLConst{spill_loads} \HOLFreeVar{K} \HOLFreeVar{code}
+\HOLKeyword{else} \HOLKeyword{if} \HOLFreeVar{r\sb{\mathrm{1}}} \HOLTokenGeq{} \HOLFreeVar{K} \HOLKeyword{then}
+  \HOLConst{Load} (\HOLFreeVar{K} + 1) \HOLFreeVar{r\sb{\mathrm{1}}}::\HOLConst{ThreeAddr} \HOLFreeVar{w} (\HOLFreeVar{K} + 1) \HOLFreeVar{r\sb{\mathrm{2}}}::\HOLConst{spill_loads} \HOLFreeVar{K} \HOLFreeVar{code}
+\HOLKeyword{else} \HOLKeyword{if} \HOLFreeVar{r\sb{\mathrm{2}}} \HOLTokenGeq{} \HOLFreeVar{K} \HOLKeyword{then}
+  \HOLConst{Load} (\HOLFreeVar{K} + 2) \HOLFreeVar{r\sb{\mathrm{2}}}::\HOLConst{ThreeAddr} \HOLFreeVar{w} \HOLFreeVar{r\sb{\mathrm{1}}} (\HOLFreeVar{K} + 2)::\HOLConst{spill_loads} \HOLFreeVar{K} \HOLFreeVar{code}
+\HOLKeyword{else} \HOLConst{ThreeAddr} \HOLFreeVar{w} \HOLFreeVar{r\sb{\mathrm{1}}} \HOLFreeVar{r\sb{\mathrm{2}}}::\HOLConst{spill_loads} \HOLFreeVar{K} \HOLFreeVar{code}
+\HOLConst{spill_loads} \HOLFreeVar{K} (\HOLConst{Load} \HOLFreeVar{d} \HOLFreeVar{s}::\HOLFreeVar{code}) = \HOLConst{Load} \HOLFreeVar{d} \HOLFreeVar{s}::\HOLConst{spill_loads} \HOLFreeVar{K} \HOLFreeVar{code}
+\HOLConst{spill_loads} \HOLFreeVar{K} (\HOLConst{Store} \HOLFreeVar{d} \HOLFreeVar{s}::\HOLFreeVar{code}) = \HOLConst{Store} \HOLFreeVar{d} \HOLFreeVar{s}::\HOLConst{spill_loads} \HOLFreeVar{K} \HOLFreeVar{code}
+\end{alltt}
+
+The following function handles all instruction generation using the two functions:
+
+\begin{alltt}\small
+	\HOLConst{spill_loads_stores} \HOLFreeVar{K} \HOLFreeVar{code} = \HOLConst{spill_stores} \HOLFreeVar{K} (\HOLConst{spill_loads} \HOLFreeVar{K} \HOLFreeVar{code})
+\end{alltt}
+
+\subsection{Verification}
+
+Verification of this step consisted of proving that code with loads and stores has the same behaviour as code without. This was demonstrated independently for the cases where a result is stored in memory and for where a necessary argument is stored in memory, and was verified over execution of one arbitrary instruction (assuming equality before evaluation) rather than inductively on a block of code. This is trivially equivalent, but using this approach made the proof far clearer.
+
+A key part of the proof is the way equality of a purely register-based store and a store combining registers and memory is defined. As mentioned, the latter involves two stores, and so functions for converting between the two were defined:
+
+\begin{alltt}\small
+	\HOLConst{split} \HOLFreeVar{r} \HOLFreeVar{K} =
+((\HOLTokenLambda{}\HOLBoundVar{x}. \HOLKeyword{if} \HOLBoundVar{x} \HOLTokenLt{} \HOLFreeVar{K} \HOLKeyword{then} \HOLFreeVar{r} \HOLBoundVar{x} \HOLKeyword{else} 0),(\HOLTokenLambda{}\HOLBoundVar{x}. \HOLKeyword{if} \HOLBoundVar{x} \HOLTokenGeq{} \HOLFreeVar{K} \HOLKeyword{then} \HOLFreeVar{r} \HOLBoundVar{x} \HOLKeyword{else} 0))
+	
+	\HOLConst{merge} (\HOLFreeVar{r},\HOLFreeVar{s}) \HOLFreeVar{K} = (\HOLTokenLambda{}\HOLBoundVar{x}. \HOLKeyword{if} \HOLBoundVar{x} \HOLTokenGeq{} \HOLFreeVar{K} \HOLKeyword{then} \HOLFreeVar{s} \HOLBoundVar{x} \HOLKeyword{else} \HOLFreeVar{r} \HOLBoundVar{x})
+\end{alltt}
+
+
+The correctness of these two follows from the theorem below, which was proved using evaluation and expanding definitions:
+
+\begin{alltt}\small
+	\HOLTokenTurnstile{} \HOLConst{merge} (\HOLConst{split} \HOLFreeVar{s} \HOLFreeVar{K}) \HOLFreeVar{K} = \HOLFreeVar{s}
+\end{alltt}
+
+Furthermore, the following theorem demonstrates that \texttt{split} is correct in that it is equal to the original store on all values:
+
+\begin{alltt}\small
+	\HOLTokenTurnstile{} (\HOLConst{split} \HOLFreeVar{s} \HOLFreeVar{K} = (\HOLFreeVar{r},\HOLFreeVar{m})) \HOLTokenImp{}
+   (\HOLTokenForall{}\HOLBoundVar{x}. \HOLBoundVar{x} \HOLTokenGeq{} \HOLFreeVar{K} \HOLTokenImp{} (\HOLFreeVar{m} \HOLBoundVar{x} = \HOLFreeVar{s} \HOLBoundVar{x})) \HOLTokenConj{} \HOLTokenForall{}\HOLBoundVar{x}. \HOLBoundVar{x} \HOLTokenLt{} \HOLFreeVar{K} \HOLTokenImp{} (\HOLFreeVar{r} \HOLBoundVar{x} = \HOLFreeVar{s} \HOLBoundVar{x})
+\end{alltt}
+
+This was again proved using evaluation and simplification.
+
+With these two functions proved correct, the correctness of generated stores was then verified:
+
+\begin{alltt}\small
+	\HOLTokenTurnstile{} \HOLFreeVar{r\sb{\mathrm{1}}} \HOLTokenLt{} \HOLFreeVar{K} \HOLTokenConj{} \HOLFreeVar{r\sb{\mathrm{2}}} \HOLTokenLt{} \HOLFreeVar{K} \HOLTokenImp{}
+   (\HOLConst{eval} \HOLFreeVar{f} \HOLFreeVar{s} [\HOLConst{Inst} \HOLFreeVar{w} \HOLFreeVar{r\sb{\mathrm{1}}} \HOLFreeVar{r\sb{\mathrm{2}}}] =
+    \HOLConst{eval_stack} \HOLFreeVar{f} (\HOLConst{split} \HOLFreeVar{s} \HOLFreeVar{K}) \HOLFreeVar{K}
+      (\HOLConst{spill_stores} \HOLFreeVar{K} (\HOLConst{to_spill_inst} [\HOLConst{Inst} \HOLFreeVar{w} \HOLFreeVar{r\sb{\mathrm{1}}} \HOLFreeVar{r\sb{\mathrm{2}}}])))
+\end{alltt}
+
+Note that this assumes that the stores used in both evaluations are equal with respect to the definition of split. It also assumes that the other two registers used are stored in registers, to simplify the proof. The proof then follows by expanding all definitions and demonstrating equality of the resulting stores by case splitting and using the following HOL axiom:
+
+\begin{alltt}\small
+	\HOLTokenTurnstile{} (\HOLTokenForall{}\HOLBoundVar{x}. \HOLFreeVar{f} \HOLBoundVar{x} = \HOLFreeVar{g} \HOLBoundVar{x}) \HOLTokenImp{} (\HOLFreeVar{f} = \HOLFreeVar{g})
+\end{alltt}
+
+The proof of correctness where one of the arguments has been spilled was very similar. The statement of correctness is given below:
+
+\begin{alltt}\small
+	\HOLTokenTurnstile{} \HOLFreeVar{w} \HOLTokenLt{} \HOLFreeVar{K} \HOLTokenConj{} \HOLFreeVar{r\sb{\mathrm{2}}} \HOLTokenLt{} \HOLFreeVar{K} \HOLTokenConj{} ((\HOLFreeVar{r},\HOLFreeVar{m}) = \HOLConst{split} \HOLFreeVar{s} \HOLFreeVar{K}) \HOLTokenImp{}
+   (\HOLConst{eval} \HOLFreeVar{f} \HOLFreeVar{s} [\HOLConst{Inst} \HOLFreeVar{w} \HOLFreeVar{r\sb{\mathrm{1}}} \HOLFreeVar{r\sb{\mathrm{2}}}] =
+    \HOLConst{eval_stack} \HOLFreeVar{f} (\HOLFreeVar{r},\HOLFreeVar{m}) \HOLFreeVar{K}
+      (\HOLConst{spill_loads} \HOLFreeVar{K} (\HOLConst{to_spill_inst} [\HOLConst{Inst} \HOLFreeVar{w} \HOLFreeVar{r\sb{\mathrm{1}}} \HOLFreeVar{r\sb{\mathrm{2}}}])))
+\end{alltt}
+
+The proof for the other argument is near-identical.
+
+\subsection{Heuristics for spilling}
+
+A number of heuristics can be used to make sure the registers being spilled have as minimal an impact on performance as possible. For instance, one could spill the register which conflicts with the most others (to ensure fewer registers have to be spilled). Another would be to try and find registers which contain values computed once at the start of their live range but not used until many instructions later, as these would be prime candidates for storing in memory. Several other possible heuristics are discussed in (TODO ref).
+
+For this project, a relatively common one was verified: spill the virtual register which has the fewest uses. To implement this, a function was written which counts the number of uses of each register and creates a mapping from registers to uses. This function is given below:
+
+\begin{alltt}\small
+	\HOLConst{count_uses} \HOLFreeVar{r} \HOLFreeVar{code} =
+\HOLConst{LENGTH} (\HOLConst{FILTER} (\HOLTokenLambda{}\HOLBoundVar{x}. \HOLBoundVar{x} = \HOLFreeVar{r}) (\HOLConst{flatten_used_registers} \HOLFreeVar{code}))
+\end{alltt}
+
+The function simply takes a list of all registers used in instructions, filters them to instances of the register in question and returns the length. It relies on the following auxiliary function which generates the list of used registers:
+
+\begin{alltt}\small
+	\HOLConst{flatten_used_registers} [] = []
+\HOLConst{flatten_used_registers} (\HOLConst{Inst} \HOLFreeVar{w} \HOLFreeVar{r\sb{\mathrm{1}}} \HOLFreeVar{r\sb{\mathrm{2}}}::\HOLFreeVar{code}) =
+\HOLFreeVar{w}::\HOLFreeVar{r\sb{\mathrm{1}}}::\HOLFreeVar{r\sb{\mathrm{2}}}::\HOLConst{flatten_used_registers} \HOLFreeVar{code}
+\end{alltt}
+
+The following function takes the information from \texttt{count\_uses} and uses it to create a mapping from registers to frequencies:
+
+\begin{alltt}\small
+	\HOLConst{get_uses_function} \HOLFreeVar{code} = (\HOLTokenLambda{}\HOLBoundVar{r}. \HOLConst{count_uses} \HOLBoundVar{r} \HOLFreeVar{code})
+\end{alltt}
+
+A heuristic was then implemented which takes this function as well as the list of edge lists and sorts registers from least- to most-used:
+
+\begin{alltt}\small
+	\HOLConst{most_used_last_heuristic} \HOLFreeVar{uses} \HOLFreeVar{list} =
+\HOLConst{QSORT} (\HOLTokenLambda{}\HOLBoundVar{x} \HOLBoundVar{y}. \HOLFreeVar{uses} \HOLBoundVar{x} \HOLTokenLt{} \HOLFreeVar{uses} \HOLBoundVar{y}) \HOLFreeVar{list}
+\end{alltt}
+
+As colouring works from the back of the list forwards, this will result in frequently-used registers being coloured first and thus being less likely to be spilled. The correctness of this function follows trivially from the fact that \texttt{QSORT} maintains the set passed into it:
+
+\begin{alltt}\small
+	\HOLTokenTurnstile{} \HOLConst{heuristic_application_ok} (\HOLConst{most_used_last_heuristic} \HOLFreeVar{uses})
+\end{alltt}
 
 
 \chapter{Evaluation and conclusions}
