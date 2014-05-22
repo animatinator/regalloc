@@ -15,7 +15,7 @@
 
 \def\authorname{David J.\ Barker\xspace}
 \def\authorcollege{Jesus College\xspace}
-\def\authoremail{David.Barker@cl.cam.ac.uk}
+\def\authoremail{djb218@cam.ac.uk}
 \def\dissertationtitle{Developing a formally verified algorithm for static register allocation}
 \def\wordcount{TBC}
 
@@ -66,7 +66,8 @@ the code's behaviour is the same.
 
 There are many issues involved when doing this. The main problem is that code will often use far more `virtual' registers than actually exist on the target processor. The simplest solution to this is to store any values which won't fit in memory, but this considerably worsens performance. The solution is to find variables which are never in use at the same time and place them in the same register, allowing registers to be re-used when the values originally assigned to them are not in use.
 
-This optimisation is enabled by liveness analysis. Essentially, a variable is live where changing its value will affect the program's future behaviour [ref?]. Because this is difficult to decide with absolute precision, we generally compute a safe
+%TODO reference at the end of the second sentence below?
+This optimisation is enabled by liveness analysis. Essentially, a variable is live where changing its value will affect the program's future behaviour. Because this is difficult to decide with absolute precision, we generally compute a safe
 over-approximation of liveness: a variable is live if an instruction reachable from here reads its value, and its value is not written to in a preceding instruction. Liveness is computed by repeatedly iterating over instructions in the code from the end backwards, updating each instruction's set of live variables according the following liveness equation:
 
 \begin{center}
@@ -104,7 +105,7 @@ stores and poor performance.
 An improvement is to take each vertex in turn and assign it the lowest register which
 isn't already in use by a vertex with which it clashes. This is fairly simple to
 implement, and significantly improves register utilisation as it re-uses old registers
-whenever the opportunity presents itself (TODO ref?).
+whenever the opportunity presents itself. %TODO ref?
 
 However, lowest-first allocation doesn't always find opportunities to re-use old
 registers. A further refinement is to check whether we can avoid using a new register
@@ -148,7 +149,7 @@ There have been several recent approaches to formalising graph theory in a proof
 
 A recent example of a verified register allocator is the one employed by the CompCert compiler (\cite{compCert}), a compiler for a subset of the C language which has been formally verified in Coq. This was proven never to generate code with behaviour differing from the specified behaviour of the input code, and featured a graph-colouring register allocator whose output was checked by a formally verified algorithm designed to ensure the colouring was correct (\cite{compCertValidation}). However, it should be noted that although this ensures correct output, its purpose is to verify the results of an untrusted colouring algorithm by matching output instructions to corresponding input instructions and using live variable analysis to confirm that the results are correct. The algorithm itself is not formally verified, allowing for algorithms to be changed without needing to re-prove correctness (\cite{compCertRegAllocExplanation}).
 
-A more rigorous approach to proving correctness is given in \cite{compCertRegAllocProof}, where a fully verified OCaml implementation of the common Iterated Register Coalescing algorithm (\cite{irc}) is demonstrated. This is a particularly strong example of a verified register allocator, and was ultimately implemented in CompCert. However, (TODO the proof is very tightly coupled?), making it difficult to modify to experiment with different heuristics or add features.
+A more rigorous approach to proving correctness is given in \cite{compCertRegAllocProof}, where a fully verified OCaml implementation of the common Iterated Register Coalescing algorithm (\cite{irc}) is demonstrated. This is a particularly strong example of a verified register allocator, and was ultimately implemented in CompCert. However, the proof appears fairly tightly coupled, making it difficult to modify to experiment with different heuristics or add features.
 
 The approach used in this project was to separate the sub-stages of allocation as cleanly as possible and build up towards an algorithm with similar performance to algorithms used in practice, arranging the proofs so that further improvements can be made and verified without much extra work. Although the algorithm verified is not quite as powerful as the IRC algorithm verified in \cite{compCertRegAllocProof}, it represents a full end-to-end system where individual components can be improved with relative ease.
 
@@ -198,7 +199,7 @@ are discussed in Chapter \ref{sec:extensions}.
 
 Code blocks were then represented as simple lists of these instructions, to simplify
 verification. The extension to more complex code featuring basic blocks is not too great
-a leap, and is discussed in Section (TODO: extensions-complex code). The main difference
+a leap, and is discussed in Section~\ref{sec:futureWorkCode}. The main difference
 in using this representation is that live variable analysis is somewhat simpler.
 
 \subsection{Code evaluation}
@@ -345,7 +346,7 @@ This is an implementation of the liveness equation given in Section~\ref{sec:bac
 	\HOLthm[rule]{three_addr.eval_get_live}
 \end{alltt}
 
-The antecedent states that the two stores $s$ and $t$ agree on the variables which are live at the start of the code. The consequent then claims that the stores at the end of the program's evaluation will agree on whatever variables are designated as live at the end. The proof of this statement is fairly complex, and is (TODO write up proof).
+The antecedent states that the two stores $s$ and $t$ agree on the variables which are live at the start of the code. The consequent then claims that the stores at the end of the program's evaluation will agree on whatever variables are designated as live at the end. The proof of this statement is by induction on the size of the code, expanding all terms and rewriting using the lemmas about insertion and deletion proved earlier along with many of the standard HOL list axioms.
 
 \subsection{Defining correctness of a colouring}
 
@@ -1380,7 +1381,7 @@ The proof for the other argument is near-identical.
 
 \subsection{Heuristics for spilling}
 
-A number of heuristics can be used to make sure the registers being spilled have as minimal an impact on performance as possible. For instance, one could spill the register which conflicts with the most others (to ensure fewer registers have to be spilled). Another would be to try and find registers which contain values computed once at the start of their live range but not used until many instructions later, as these would be prime candidates for storing in memory. Several other possible heuristics are discussed in (TODO ref).
+A number of heuristics can be used to make sure the registers being spilled have as minimal an impact on performance as possible. For instance, one could spill the register which conflicts with the most others (to ensure fewer registers have to be spilled). Another would be to try and find registers which contain values computed once at the start of their live range but not used until many instructions later, as these would be prime candidates for storing in memory.% Several other possible heuristics are discussed in (TODO ref).
 
 For this project, a relatively common one was verified: spill the virtual register which has the fewest uses. To implement this, a function was written which counts the number of uses of each register and creates a mapping from registers to uses. This function is given below:
 
@@ -1413,11 +1414,43 @@ As colouring works from the back of the list forwards, this will result in frequ
 \end{alltt}
 
 
-\chapter{Evaluation and conclusions}
+\chapter{Conclusions}
 
-TODO
+\section{Evaluation}
 
+Overall, the project was successful in its original aims. The system implemented has a good colouring algorithm and a series of effective heuristics, and a complete proof of correctness showing that the code emitted has the same evaluation behaviour as the input code. It also successfully models preference graphs, with a verified colouring algorithm which takes them into account, and register spilling, with a verified code generation step and heuristic. It is also fairly modular, and as was demonstrated in Chapter \ref{sec:extensions} it is fairly easy to extend and add extra heuristics and features without too much extra verification.
 
+The main weakness is that the code representation is fairly limited -- for instance, it doesn't allow for jumps. This is arguably not significant, as the algorithm could easily be run on one basic block at a time, but for register mappings to be maintained between blocks the algorithm needs to be extended to handle this. This is discussed further in the next section on future work.
+
+Another problem is performance: the algorithm as implemented is not at all optimised, and would likely be quite slow compared to most real allocators. However, this problem is largely orthogonal to the objectives of the project as the intent was to verify the algorithms rather than implement them in the most efficient way, and any faster implementation satisfying the necessary properties could easily be substituted in.
+
+It therefore seems reasonable to consider the project a success. With that said, there are a number of areas where improvements could be made. These are discussed in more depth in the next section.
+
+\section{Future work}
+
+The last section highlighted a couple of issues with the algorithms implemented. In this section, solutions to these problems are examined along with other possible improvements which could be made.
+
+\subsection{More general code} \label{sec:futureWorkCode}
+
+The first main issue is that the code datatype is very limiting: all instructions are simply three-address operations, meaning there can be no jumps or procedure calls. An interesting improvement would be to extend the code representation to allow for these instructions. Such an implementation would likely require that the code be split into basic blocks, and then the standard live variable analysis algorithm could be run on the result. This wouldn't be particularly difficult, and would only change the implementation and verification of the \texttt{get\_live} function -- most other proofs will still stand as they are. A new evaluation function would be required, however, and so correctness of the generated code would have to be re-proved with respect to it.
+
+\subsection{More intelligent colouring}
+
+The implemented colouring algorithms are good, but more intelligent colouring algorithms are available. For instance, the iterated register coalsecing algorithm described in \cite{irc} would be a good candidate. Again, this wouldn't affect many other things, but would potentially require some re-structuring of the graph colouring proofs.
+
+\subsection{More thorough treatment of register spilling}
+
+While fairly successful, the extension work on finite registers and spilling is somewhat simplistic at the moment. For instance, in a real compiler one wouldn't allocate three registers for temporary variables loaded from memory as this would be wasteful. Instead, the new temporaries are generally added into the original set of registers and register allocation is performed again on the new code with loads and stores.
+
+Furthermore, \cite{graphColouringWebsite} mentions some better approaches to spilling, such as breaking up live ranges, and it would likely be useful to implement and verify some of these as well.
+
+\subsection{Performance considerations}
+
+The algorithms implemented are clearly not very optimised. An interesting extension to the project would be re-implementing some of the key functions in more efficient ways, and verifying that they implement the same behaviour as the original unoptimised versions. As mentioned, the modular nature of the proofs means this wouldn't be particularly hard, and the resulting system would be more practically useful.
+
+%\section{Final words}
+
+%TODO
 
 
 \appendix

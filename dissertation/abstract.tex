@@ -3,8 +3,7 @@
 \vspace{24pt} 
 
 
-This is the abstract. Write a summary of the whole thing. Make 
-sure it fits in one page. TODO.
+This dissertation describes the implementation and verification of a full register allocation algorithm, designed to be representative of the sort of allocator that might be used in a practical optimising compiler. A model of three-address code (and its execution behaviour) was developed and a verified live variable analysis function and clash graph generator were constructed. A number of different graph colouring algorithms were then implemented and proved correct, as well as various heuristics. The work was then tied together by an overarching proof of correctness which demonstrates that the algorithm does not change code behaviour. The algorithm was also extended to construct preference graphs based on `move' instructions and use them in colouring, and to handle spilling of registers where not enough physical registers are available, and these additions were also verified in depth.
 
 
 \newpage
