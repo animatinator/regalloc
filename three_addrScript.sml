@@ -1006,4 +1006,27 @@ val spill_loads_stores_def = Define `
 `
 
 
+(* Functions to count uses of a register and map registers to their use counts
+Used for a 'spill the one with fewest used' heuristic *)
+
+(* Flatten the code down to a list of registers used by its instructions
+(containing duplicates where a register is used in multiple instructions) *)
+val flatten_used_registers = Define `
+    (flatten_used_registers [] = []) /\
+    (flatten_used_registers ((Inst w r1 r2)::code) =
+    			    w::r1::r2::(flatten_used_registers code))
+`
+
+(* Count the uses of a register *)
+val count_uses_def = Define `
+    (count_uses r code =
+    		LENGTH (FILTER (\x . x = r) (flatten_used_registers code)))
+`
+
+(* Returns a function mapping registers to the numbers of times they're used *)
+val get_uses_function = Define `
+    (get_uses_function code = (\r . count_uses r code))
+`
+
+
 val _ = export_theory();

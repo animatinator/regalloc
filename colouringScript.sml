@@ -671,6 +671,25 @@ REPEAT STRIP_TAC THEN
 METIS_TAC [set_list_equality])
 
 
+(* Most-used-first heuristic: ensures that registers used most are at the back
+of the list and so get coloured first, meaning those which are used a lot will
+be prioritised when spilling occurs *)
+val most_used_last_heuristic_def = Define `
+    (most_used_last_heuristic uses list =
+    		    QSORT (\x y . uses x < uses y) list)
+`
+
+val most_used_last_heuristic_ok = store_thm("most_used_last_heuristic_ok",
+``
+! uses .
+heuristic_application_ok (most_used_last_heuristic uses)
+``,
+FULL_SIMP_TAC bool_ss [heuristic_application_ok_def,
+	      most_used_last_heuristic_def] THEN
+REPEAT STRIP_TAC THEN
+METIS_TAC [set_list_equality, QSORT_MEM])
+
+
 
 (* Lowest-first colouring:
 Take the supplied constraints in order, and assign to each register the
