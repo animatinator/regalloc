@@ -134,6 +134,16 @@ REPEAT STRIP_TAC THEN
     by METIS_TAC [get_registers_duplicate_free] THEN
 METIS_TAC [graph_duplicate_free_if_vertices_duplicate_free])
 
+val generated_graph_reflects_conflicts = store_thm(
+    "generated_graph_reflects_conflicts", ``
+! code live . duplicate_free live ==>
+graph_reflects_conflicts (get_conflicts code live)
+``,
+REPEAT STRIP_TAC THEN
+FULL_SIMP_TAC std_ss [get_conflicts_def] THEN
+
+cheat)
+
 
 
 (* Colouring satisfies constraints *)
