@@ -78,6 +78,40 @@ Q.PAT_ASSUM `! P f list . (! x . P (f x)) ==> EVERY P (MAP f list)`
 `(get_registers code live)`]) THEN
 METIS_TAC [every_map])
 
+val not_mem_after_graph_map = store_thm("not_mem_after_graph_map",
+``
+! x list f .
+~(MEM x list) ==> ! xs . (~(MEM (x, xs) (MAP (\x . (x, f x)) list)))
+``,
+Induct_on `list` THEN1 (EVAL_TAC THEN DECIDE_TAC) THEN
+REPEAT STRIP_TAC THEN
+FULL_SIMP_TAC bool_ss [MEM, MAP] THEN1 METIS_TAC [PAIR_EQ] THEN
+METIS_TAC [])
+
+val graph_duplicate_free_if_vertices_duplicate_free = store_thm(
+    "graph_duplicate_free_if_vertices_duplicate_free",
+``
+! list f .
+duplicate_free list ==>
+graph_duplicate_free (MAP (\x . x, f x) list)
+``,
+Induct_on `list` THEN1 (EVAL_TAC THEN DECIDE_TAC) THEN
+REPEAT STRIP_TAC THEN
+EVAL_TAC THEN
+FULL_SIMP_TAC bool_ss [duplicate_free_def] THEN
+METIS_TAC [not_mem_after_graph_map])
+
+val generated_graph_duplicate_free = store_thm(
+    "generated_graph_duplicate_free", ``
+! code live . duplicate_free live ==>
+graph_duplicate_free (get_conflicts code live)
+``,
+FULL_SIMP_TAC std_ss [get_conflicts_def] THEN
+REPEAT STRIP_TAC THEN
+`duplicate_free (get_registers code live)`
+    by METIS_TAC [get_registers_duplicate_free] THEN
+METIS_TAC [graph_duplicate_free_if_vertices_duplicate_free])
+
 
 
 (* Colouring satisfies constraints *)
@@ -535,6 +569,19 @@ val sort_not_considered_by_degree_def = Define `
 	      ~(done (FST x))) list)
 `
 
+(* Handy lemma regarding set equality: two sets made from lists are equal iff
+being a member of one list is equivalent to being a member of the other *)
+val set_list_equality = store_thm("set_list_equality",
+``
+! list list' .
+(! x . MEM x list = MEM x list') ==>
+(set list = set list')
+``,
+REPEAT STRIP_TAC THEN
+FULL_SIMP_TAC std_ss [SET_EQ_SUBSET] THEN
+STRIP_TAC THEN FULL_SIMP_TAC std_ss [SUBSET_DEF])
+
+
 (* The heuristic itself *)
 (* done is the list of vertices already considered, which are to be treated as
 having been removed from the graph. sort_not_considered_by_degree ignores
@@ -564,18 +611,6 @@ val lowest_degree_subgraph_heuristic_def = Define `
 	    (sort_not_considered_by_degree (\x . F) cs) [])
 `
 
-
-(* Handy lemma regarding set equality: two sets made from lists are equal iff
-being a member of one list is equivalent to being a member of the other *)
-val set_list_equality = store_thm("set_list_equality",
-``
-! list list' .
-(! x . MEM x list = MEM x list') ==>
-(set list = set list')
-``,
-REPEAT STRIP_TAC THEN
-FULL_SIMP_TAC std_ss [SET_EQ_SUBSET] THEN
-STRIP_TAC THEN FULL_SIMP_TAC std_ss [SUBSET_DEF])
 
 (* The function sort_not_considered_by_degree_ok maintains the set which is
 passed in *)
@@ -784,9 +819,28 @@ What I'm trying to do with this lemma is show that if the first goal holds of
 (as intuitively (r, rs) should capture all the registers r clashes with, but
 I'm not sure how to formalise this).
 *)
+val graph_duplicate_free_def = Define `
+    (graph_duplicate_free [] = T) /\
+    (graph_duplicate_free ((r, rs)::cs) =
+    (! rs' . ~(MEM (r, rs') cs)) /\ graph_duplicate_free cs)
+`
+
+
+val colouring_satisfactory_every = prove(``
+! col cs .
+(colouring_satisfactory col cs) =
+(EVERY (\ (x, xs) . ~(MEM(col x) (MAP col xs))) cs)
+``,
+Induct_on `cs` THEN1 (EVAL_TAC THEN DECIDE_TAC) THEN
+REPEAT STRIP_TAC THEN
+Cases_on `h` THEN
+EVAL_TAC THEN
+METIS_TAC [])
+
 val new_colour_satisfactory_if_constraints_satisfied = store_thm(
 	"new_colour_satisfactory_if_constraints_satisfied", ``
 ! (n:num) (r:num) (col:num->num) (rs:num list) (cs: (num # num list) list) .
+(graph_duplicate_free ((r, rs)::cs)) /\
 (~(MEM n (MAP ((r =+ n) col) rs)) /\ (colouring_satisfactory col cs))
 ==>
 (colouring_satisfactory ((r =+ n)col) ((r, rs)::cs))
@@ -794,12 +848,30 @@ val new_colour_satisfactory_if_constraints_satisfied = store_thm(
 REPEAT STRIP_TAC THEN
 EVAL_TAC THEN
 FULL_SIMP_TAC bool_ss [] THEN
+FULL_SIMP_TAC bool_ss [colouring_satisfactory_every] THEN
+(* TODO use duplicate-freeness for next line *)
+`! y ys . MEM (y, ys) cs ==> y <> r` by cheat THEN
+FULL_SIMP_TAC bool_ss [EVERY_MEM] THEN
+REPEAT STRIP_TAC THEN
+Cases_on `e` THEN
+`q <> r` by METIS_TAC [MEM] THEN
+EVAL_TAC THEN
+FULL_SIMP_TAC bool_ss [] THEN
+`~(MEM (col q) (MAP col r'))` by cheat THEN
+Tactical.REVERSE (Cases_on `MEM r r'`) THEN1
+    METIS_TAC [function_irrelevant_update] THEN
+Tactical.REVERSE(`col q <> n` by ALL_TAC) THEN1
+    METIS_TAC [output_cannot_exist_without_being_mapped_to] THEN
+(* TODO now we need that col q <> n. Most likely has to come from some extra
+assumption about the graph... *)
+
 cheat)
 
 
 val lowest_first_colouring_satisfactory = store_thm(
 	"lowest_first_colouring_satisfactory", ``
 ! cs .
+  graph_duplicate_free cs /\
   graph_edge_lists_well_formed cs ==>
   colouring_satisfactory (lowest_first_colouring cs) cs
 ``,
@@ -808,6 +880,7 @@ REPEAT STRIP_TAC THEN
 Cases_on `h` THEN
 `graph_edge_lists_well_formed cs`
         by METIS_TAC [graph_edge_lists_well_formed_def, EVERY_DEF] THEN
+`graph_duplicate_free cs` by METIS_TAC [graph_duplicate_free_def] THEN
 `colouring_satisfactory (lowest_first_colouring cs) cs` by METIS_TAC [] THEN
 TACTICAL.REVERSE (`~(MEM (lowest_available_colour (lowest_first_colouring cs) r)
        (MAP ((q =+ lowest_available_colour (lowest_first_colouring cs) r)
