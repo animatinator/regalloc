@@ -21,8 +21,10 @@ val has_vertex_def = Define `
 `
 
 (* Graph has no duplicate vertices *)
-val no_duplicate_vertices_def = Define `
-    (no_duplicate_vertices graph = duplicate_free (get_vertices graph))
+val graph_duplicate_free_def = Define `
+    (graph_duplicate_free [] = T) /\
+    (graph_duplicate_free ((r, rs)::cs) =
+    (! rs' . ~(MEM (r, rs') cs)) /\ graph_duplicate_free cs)
 `
 
 (* Vertex is not linked to itself, and there are no duplicates in its edge
@@ -804,6 +806,17 @@ val lowest_first_colouring_def = Define `
 `
 
 
+val colouring_satisfactory_every = prove(``
+! col cs .
+(colouring_satisfactory col cs) =
+(EVERY (\ (x, xs) . ~(MEM(col x) (MAP col xs))) cs)
+``,
+Induct_on `cs` THEN1 (EVAL_TAC THEN DECIDE_TAC) THEN
+REPEAT STRIP_TAC THEN
+Cases_on `h` THEN
+EVAL_TAC THEN
+METIS_TAC [])
+
 (* Possible lemma for proving lowest-first correctness - not sure how to prove
 it.
 The problem is that (colouring_satisfactory col ((r,rs)::cs)) consists of
@@ -819,24 +832,6 @@ What I'm trying to do with this lemma is show that if the first goal holds of
 (as intuitively (r, rs) should capture all the registers r clashes with, but
 I'm not sure how to formalise this).
 *)
-val graph_duplicate_free_def = Define `
-    (graph_duplicate_free [] = T) /\
-    (graph_duplicate_free ((r, rs)::cs) =
-    (! rs' . ~(MEM (r, rs') cs)) /\ graph_duplicate_free cs)
-`
-
-
-val colouring_satisfactory_every = prove(``
-! col cs .
-(colouring_satisfactory col cs) =
-(EVERY (\ (x, xs) . ~(MEM(col x) (MAP col xs))) cs)
-``,
-Induct_on `cs` THEN1 (EVAL_TAC THEN DECIDE_TAC) THEN
-REPEAT STRIP_TAC THEN
-Cases_on `h` THEN
-EVAL_TAC THEN
-METIS_TAC [])
-
 val new_colour_satisfactory_if_constraints_satisfied = store_thm(
 	"new_colour_satisfactory_if_constraints_satisfied", ``
 ! (n:num) (r:num) (col:num->num) (rs:num list) (cs: (num # num list) list) .
@@ -927,6 +922,7 @@ val lowest_first_preference_colouring_def = Define `
 val lowest_first_preference_colouring_satisfactory = store_thm(
 	"lowest_first_preference_colouring_satisfactory", ``
 ! cs prefs .
+  graph_duplicate_free cs /\
   graph_edge_lists_well_formed cs ==>
   colouring_satisfactory (lowest_first_preference_colouring cs prefs) cs
 ``,
@@ -935,6 +931,7 @@ REPEAT STRIP_TAC THEN
 Cases_on `h` THEN
 `graph_edge_lists_well_formed cs`
         by METIS_TAC [graph_edge_lists_well_formed_def, EVERY_DEF] THEN
+`graph_duplicate_free cs` by METIS_TAC [graph_duplicate_free_def] THEN
 `colouring_satisfactory (lowest_first_preference_colouring cs prefs) cs`
 			by METIS_TAC [] THEN
 `~(MEM (lowest_available_colour (lowest_first_preference_colouring cs prefs) r)
