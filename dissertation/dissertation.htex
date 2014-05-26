@@ -50,18 +50,18 @@
 \pagenumbering{arabic}
 \setcounter{page}{1}
 
-Register allocation is one of the most important stages in an optimising compiler. Due to the massive speed difference between CPU registers and lower-level caches, a program which makes efficient use of registers and minimises memory accesses will be considerably faster than one which na\"{\i}vely stores variables in memory. The responsibility of register allocation is therefore to map program variables into physical registers whilst also minimising the number of values which have to be stored in memory. As with all optimisation steps, special care is needed to ensure register allocation does not accidentally alter program behaviour. Some values may be allocated the same register on the assumption that they will not be using it at the same time, and for the sake of correctness it is critical that this assumption is valid.
+Register allocation is one of the most important stages in an optimising compiler. Due to the significant speed difference between CPU registers and lower-level caches, a program which makes efficient use of registers and minimises memory accesses will be considerably faster than one which na\"{\i}vely stores variables in memory. The responsibility of register allocation is therefore to map program variables into physical registers whilst also minimising the number of values which have to be stored in memory. As with all optimisation steps, special care is needed to ensure register allocation does not accidentally alter program behaviour. Some values may be allocated the same register on the assumption that they will not be using it at the same time, and for the sake of correctness it is critical that this assumption is valid.
 
 The objective of this project was to formally model a realistic register allocation algorithm in the HOL4 theorem prover, and verify that it does not change program behaviour. The approach used was to begin with a very simple graph colouring algorithm and incrementally improve it, adding extra heuristics and making the model more realistic, whilst maintaining a proof of overall correctness with respect to the semantics of code evaluation. Overall, the project was successful in its goals: a full end-to-end algorithm was verified, from source three-address code to output code with registers allocated, which includes a colouring algorithm and clash graph generator representative of those used in practice. The system is reasonably modular, and extra heuristics can be added and verified with little difficulty. It also models some more difficult aspects of register allocation, namely preference graphs and register spilling, and the algorithms handling these were fully verified as well.
 
-The next few chapters examing the background surrounding the problem of register allocation, and review some recent related work. Chapters \ref{sec:LVAClashGraphs} through \ref{sec:extensions} go on to describe in detail how the system was modelled and verified. In chapter \ref{sec:LVAClashGraphs}, a series of functions for performing live-variable analysis and generating the corresponding clash graphs is described, alongside descriptions of their correctness proofs. Chapter \ref{sec:colouring} goes on to explore the core of the algorithm: taking a clash graph and producing a colouring, through a combination of vertex order heuristics and colouring algorithms. The work of these chapters is brought together in Chapter \ref{sec:bringingTogether}, where the individual correctness proofs are used to build an overall proof of correctness with respect to code evaluation. Finally, Chapter \ref{sec:extensions} examines some of the extension work which was completed once the main algorithm had been verified.
+The next few chapters examine the background surrounding the problem of register allocation, and review some recent related work. Chapters \ref{sec:LVAClashGraphs} through \ref{sec:extensions} go on to describe in detail how the system was modelled and verified. In chapter \ref{sec:LVAClashGraphs}, a series of functions for performing live-variable analysis and generating the corresponding clash graphs is described, alongside descriptions of their correctness proofs. Chapter \ref{sec:colouring} goes on to explore the core of the algorithm: taking a clash graph and producing a colouring, through a combination of vertex order heuristics and colouring algorithms. The work of these chapters is brought together in Chapter \ref{sec:bringingTogether}, where the individual correctness proofs are used to build an overall proof of correctness with respect to code evaluation. Finally, Chapter \ref{sec:extensions} examines some of the extension work which was completed once the main algorithm had been verified.
 
 \chapter{Background} \label{sec:background}
 
 \section {The problem of register allocation}
 
 When compiling code, we generally assume the existence of an infinite number of locations in which to store values. Each variable used by the program is treated as its own location, and temporaries and results are freely allocated to conceptual
-registers. However, in reality all processors have only finite numbers of physical registers, some of which are reserved for specific purposes, and so the compiler ultimately has to map variables in the code to registers in such a way that ensures
+registers. However, in reality all processors only have a finite number of physical registers, some of which are reserved for specific purposes, and so the compiler ultimately has to map variables in the code to registers in such a way that ensures
 the code's behaviour is the same.
 
 There are many issues involved when doing this. The main problem is that code will often use far more `virtual' registers than actually exist on the target processor. The simplest solution to this is to store any values which won't fit in memory, but this considerably worsens performance. The solution is to find variables which are never in use at the same time and place them in the same register, allowing registers to be re-used when the values originally assigned to them are not in use.
@@ -147,7 +147,7 @@ Although some considerable work has gone into the formal verification of program
 
 There have been several recent approaches to formalising graph theory in a proof system like HOL. A notable example is \cite{isabelleGraphs}, in which a full library of graph theory primitives is developed for the Isabelle proof system. More relevantly, \cite{5colourTheorem} specifically discusses formalising graph colouring in Isabelle/HOL as it tackles the problem of verifying the five colour theorem. However, neither of these was found to be general enough to build upon for this project -- ultimately, a pair of customised graph representations was used, both of which were designed to best fit their specific applications.
 
-A recent example of a verified register allocator is the one employed by the CompCert compiler (\cite{compCert}), a compiler for a subset of the C language which has been formally verified in Coq. This was proven never to generate code with behaviour differing from the specified behaviour of the input code, and featured a graph-colouring register allocator whose output was checked by a formally verified algorithm designed to ensure the colouring was correct (\cite{compCertValidation}). However, it should be noted that although this ensures correct output, its purpose is to verify the results of an untrusted colouring algorithm by matching output instructions to corresponding input instructions and using live variable analysis to confirm that the results are correct. The algorithm itself is not formally verified, allowing for algorithms to be changed without needing to re-prove correctness (\cite{compCertRegAllocExplanation}).
+A recent example of a verifying register allocator is the one employed by the CompCert compiler (\cite{compCert}), a compiler for a subset of the C language which has been formally verified in Coq. This was proven never to generate code with behaviour differing from the specified behaviour of the input code, and featured a graph-colouring register allocator whose output was checked by a formally verified algorithm designed to ensure the colouring was correct (\cite{compCertValidation}). However, it should be noted that although this ensures correct output, its purpose is to verify the results of an untrusted colouring algorithm by matching output instructions to corresponding input instructions and using live variable analysis to confirm that the results are correct. The algorithm itself is not formally verified, allowing for algorithms to be changed without needing to re-prove correctness (\cite{compCertRegAllocExplanation}).
 
 A more rigorous approach to proving correctness is given in \cite{compCertRegAllocProof}, where a fully verified OCaml implementation of the common Iterated Register Coalescing algorithm (\cite{irc}) is demonstrated. This is a particularly strong example of a verified register allocator, and was ultimately implemented in CompCert. However, the proof appears fairly tightly coupled, making it difficult to modify to experiment with different heuristics or add features.
 
@@ -177,15 +177,7 @@ defined and how colourings were modelled and applied.
 
 \subsection{Registers and instructions}
 
-In real systems, register naming conventions tend to vary between processors, and there
-are often multiple groups of registers available. For the purposes of verification, this
-was simplified by using natural numbers to refer to registers, as in practice these numbers
-could trivially be mapped to real register names. Furthermore, there will generally be a
-great many different operations available on a given machine, but as the focus is on register
-allocation the only thing that matters here is the registers read and those assigned.
-Compilers commonly use three-address code as an intermediate representation, so a given
-instruction essentially consists of two source registers and one destination register. This
-led to the very simplified instruction representation given below:
+In real systems, register naming conventions tend to vary between processors, and there are often multiple groups of registers available. For the purposes of verification, this was simplified by using natural numbers to refer to registers, as in practice these numbers could be constrained to the number of available registers and then trivially mapped to real register names. Furthermore, there will generally be a great many different operations available on a given machine, but as the focus is on register allocation the only thing that matters here is the registers read and those assigned. Compilers commonly use three-address code as an intermediate representation, so a given instruction essentially consists of two source registers and one destination register. This led to the very simplified instruction representation given below.\footnote{This is a HOL datatype declaration in which the type name is given on the left followed by a series of constructors. Here there is only one constructor, \texttt{Inst}, which takes three values of type \texttt{num} representing the registers the instruction uses.}
 
 \begin{alltt}\small
 	\HOLthm{three_addr.datatype_inst}
@@ -426,7 +418,7 @@ An important property of colouring correctness is that it is also correct for a 
 	\HOLthm{three_addr.colouring_ok_preserved}
 \end{alltt}
 
-This definition works nicely for the proofs involving working directly with three-address code, and was used for most of the later proofs regarding code evaluation behaviour. However, it is very strongly tied to the code definitions and doesn't clearly reflect the conflicts graph colouring is working with, making proofs relating graph colourings to valid register allocations particularly difficult.
+This definition works nicely for the proofs working directly with three-address code, and was used for most of the later proofs regarding code evaluation behaviour. However, it is very strongly tied to the code definitions and doesn't clearly reflect the conflicts graph colouring is working with, making proofs relating graph colourings to valid register allocations particularly difficult.
 
 For this reason, an alternative definition of \texttt{colouring\_ok} was created and proved to be equivalent to the original definition. This alternative definition was much easier to work with when reasoning about clash graphs, as demonstrated later in Section~\ref{sec:satisfactoryImpliesOk}.
 
@@ -621,7 +613,7 @@ This specifies that a vertex cannot be linked to itself, and the set of vertices
 	\HOLthm[def]{colouring.graph_edge_lists_well_formed_def}
 \end{alltt}
 
-In Section~\ref{sec:generatedGraphsCorrect}, the proof that graphs generated by get_conflicts have these required properties is described, but for now it is assumed that they will hold of any graph passed in to the colouring algorithms.
+In Section~\ref{sec:generatedGraphsCorrect}, the proof that graphs generated by \texttt{get\_conflicts} have these required properties is described, but for now it is assumed that they will hold of any graph passed in to the colouring algorithms.
 
 \section{Na\"{\i}ve graph colouring} \label{sec:naiveColouring}
 
@@ -690,7 +682,7 @@ The second main lemma specifies that updating the mapped value of a function $f$
 	\HOLthm{colouring.function_irrelevant_update}
 \end{alltt}
 
-This was proved by inducting on the list and showing that the function's update couldn't affect any element. From this a useful lemma for updating \texttt{naive\_colouring\_aux} was deduced, stating that colouring an unused vertex will not affect the result of applying the colouring:
+This was proved by inducting on the list and showing that the function's update couldn't affect any element. From this, a useful lemma for updating \texttt{naive\_colouring\_aux} was deduced, stating that colouring an unused vertex will not affect the result of applying the colouring:
 
 \begin{alltt}\small
 	\HOLthm{colouring.colouring_map_with_unused_update}
@@ -955,7 +947,7 @@ The smallest-last algorithm ended up being quite non-trivial to verify. The main
 	\HOLthm{colouring.set_list_equality}
 \end{alltt}
 
-This was relatively simple to prove using the standard HOL axioms about set equality. It was then necessary to prove that the sorting function preserves the elements passed into it:
+This was relatively simple to prove using the standard HOL library theorems about set equality. It was then necessary to prove that the sorting function preserves the elements passed into it:
 
 \begin{alltt}\small
 	\HOLthm{colouring.sort_not_considered_by_degree_ok}
@@ -988,7 +980,7 @@ This again used the custom induction rule. The base case was relatively simple, 
 
 In this chapter, the properties verified of the algorithms developed in previous chapters are used to produce an overall proof of correctness for the whole algorithm. The result of this is a high-level proof which shows that applying these register allocation algorithms to a piece of code will yield code with exactly the same evaluation behaviour.
 
-This consists of three main proofs. The first shows that graphs generated by the clash graph generator possess the properties assumed by the colouring algorithms, the second shows that the definition of correctness used for colouring algorithms implies the correctness required for correct evaluation, and the third shows that a colouring satisfying the correctness used for evaluation leads to code whose evaluation behaviour is unchanged.
+This consists of three main proofs. The first shows that graphs generated by the clash graph generator possess the properties assumed by the colouring algorithms; the second shows that the definition of correctness used for colouring algorithms implies the correctness required for correct evaluation; and the third shows that a colouring satisfying the correctness used for evaluation leads to code whose evaluation behaviour is unchanged.
 
 \section{Linking code correctness to graph correctness}
 
@@ -1218,7 +1210,7 @@ To make it possible to generate preference graphs, it was necessary to extend th
 	\HOLthm{three_addr.datatype_instr}
 \end{alltt}
 
-The `op' parameter is either an arbitrary function of type $num \rightarrow num \rightarrow num$ or a move, as defined below:
+The `op' parameter is either an arbitrary function of type $num \rightarrow num \rightarrow num$ or a move, as defined below:\footnote{Again, this uses the HOL datatype definition syntax. In this case there are two constructors: \texttt{Op}, taking three \texttt{num} values representing registers, and \texttt{Move}, taking two \texttt{num}s representing source and destination.}
 
 \begin{alltt}\small
 	\HOLthm{three_addr.datatype_op}
@@ -1230,7 +1222,7 @@ An auxiliary function was implemented to evaluate the action of an operation:
 	\HOLthm[def]{three_addr.eval_op_def}
 \end{alltt}
 
-In the case of a move instruction, it returns a function which simply returns the first argument register, to be stored in the destination register. The evaluation function is then re-defined appropriately, using \texttt{eval\_op}:
+In the case of a \texttt{Move} instruction, it returns a function which simply returns the first argument register, to be stored in the destination register. The evaluation function is then re-defined appropriately, using \texttt{eval\_op}:
 
 \begin{alltt}\small
 	\HOLthm[def]{three_addr.eval_instr_def}
@@ -1418,13 +1410,13 @@ As colouring works from the back of the list forwards, this will result in frequ
 
 \section{Evaluation}
 
-Overall, the project was successful in its original aims. The system implemented has a good colouring algorithm and a series of effective heuristics, and a complete proof of correctness showing that the code emitted has the same evaluation behaviour as the input code. It also successfully models preference graphs, with a verified colouring algorithm which takes them into account, and register spilling, with a verified code generation step and heuristic. It is also fairly modular, and as was demonstrated in Chapter \ref{sec:extensions} it is fairly easy to extend and add extra heuristics and features without too much extra verification.
+Overall, the project was successful in its original aims. The system implemented has a good colouring algorithm and a series of effective heuristics, and a complete proof of correctness showing that the code emitted has the same evaluation behaviour as the input code. It also successfully models preference graphs, with a verified colouring algorithm which takes them into account, and register spilling, with a verified code generation step and heuristic. It is also fairly modular, and as was demonstrated in Chapter \ref{sec:extensions} it is fairly easy to extend and add extra heuristics and features without too much extra verification effort.
 
 The main weakness is that the code representation is fairly limited -- for instance, it doesn't allow for jumps. This is arguably not significant, as the algorithm could easily be run on one basic block at a time, but for register mappings to be maintained between blocks the algorithm needs to be extended to handle this. This is discussed further in the next section on future work.
 
 Another problem is performance: the algorithm as implemented is not at all optimised, and would likely be quite slow compared to most real allocators. However, this problem is largely orthogonal to the objectives of the project as the intent was to verify the algorithms rather than implement them in the most efficient way, and any faster implementation satisfying the necessary properties could easily be substituted in.
 
-It therefore seems reasonable to consider the project a success. With that said, there are a number of areas where improvements could be made. These are discussed in more depth in the next section.
+It therefore seems reasonable to consider the project a success. With that said, there are a number of areas where improvements could be made. These are discussed in the next section.
 
 \section{Future work}
 
