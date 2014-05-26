@@ -39,6 +39,26 @@ val graph_edge_lists_well_formed_def = Define `
     (graph_edge_lists_well_formed es = EVERY (\x . edge_list_well_formed x) es)
 `
 
+(* The graph reflects conflicts accurately: any vertex linked to the current one
+will also have a link to this vertex; the graph is symmetric *)
+val graph_reflects_conflicts_def = Define `
+    (graph_reflects_conflicts cs = ! r1 r2 rs1 rs2 .
+        MEM (r1, rs1) cs /\ MEM (r2, rs2) cs /\ MEM r1 rs2 ==>
+	    MEM r2 rs1)
+`
+
+(* Dropping a vertex preserves graph_reflects_conflicts *)
+val graph_reflects_conflicts_preserved = store_thm(
+    "graph_reflects_conflicts_preserved", ``
+! r rs cs .
+graph_reflects_conflicts ((r,rs)::cs) ==>
+graph_reflects_conflicts cs
+``,
+EVAL_TAC THEN
+REPEAT STRIP_TAC THEN
+METIS_TAC [])
+
+
 (* Proving that graphs generated in three_addrScript have the necessary
 properties *)
 val generated_edge_lists_well_formed = store_thm(
@@ -817,24 +837,15 @@ Cases_on `h` THEN
 EVAL_TAC THEN
 METIS_TAC [])
 
-(* Possible lemma for proving lowest-first correctness - not sure how to prove
-it.
-The problem is that (colouring_satisfactory col ((r,rs)::cs)) consists of
-two goals:
-    ~(MEM (col r) (MAP col rs))
-    colouring_satisfactory col cs
-
-The first is usually quite straightforward to prove, but the second is trickier
-because the colouring 'col' is usually of the form ((q =+ n) col), but the
-induction hypothesis only gives colouring_satisfactory col cs.
-What I'm trying to do with this lemma is show that if the first goal holds of
-((q =+ n) col), then the update (q =+ n) will be fine for the remainder of cs
-(as intuitively (r, rs) should capture all the registers r clashes with, but
-I'm not sure how to formalise this).
-*)
+(* The lemma for proving lowest-first colouring is correct. Essentially, if
+a colouring update satisfies the constraints for the current vertex then it
+satisfies those of all vertices which have already been examined. This follows
+from the fact that a graph won't have duplicate vertices and each conflict
+list contains all conflicts for a register *)
 val new_colour_satisfactory_if_constraints_satisfied = store_thm(
 	"new_colour_satisfactory_if_constraints_satisfied", ``
 ! (n:num) (r:num) (col:num->num) (rs:num list) (cs: (num # num list) list) .
+(graph_reflects_conflicts ((r,rs)::cs)) /\
 (graph_duplicate_free ((r, rs)::cs)) /\
 (~(MEM n (MAP ((r =+ n) col) rs)) /\ (colouring_satisfactory col cs))
 ==>
@@ -852,20 +863,25 @@ Cases_on `e` THEN
 `q <> r` by METIS_TAC [MEM] THEN
 EVAL_TAC THEN
 FULL_SIMP_TAC bool_ss [] THEN
+(* TODO the below follows by implication in assumptions *)
 `~(MEM (col q) (MAP col r'))` by cheat THEN
 Tactical.REVERSE (Cases_on `MEM r r'`) THEN1
     METIS_TAC [function_irrelevant_update] THEN
 Tactical.REVERSE(`col q <> n` by ALL_TAC) THEN1
     METIS_TAC [output_cannot_exist_without_being_mapped_to] THEN
-(* TODO now we need that col q <> n. Most likely has to come from some extra
-assumption about the graph... *)
-
-cheat)
+`MEM (r, rs) ((r,rs)::cs) /\ MEM (q,r') ((r,rs)::cs)`
+     by FULL_SIMP_TAC bool_ss [MEM] THEN
+`MEM q rs` by METIS_TAC [graph_reflects_conflicts_def] THEN
+`MEM ((r=+n)col q) (MAP ((r=+n)col) rs)` by METIS_TAC [mem_after_map] THEN
+`((r=+n)col) q = col q` by FULL_SIMP_TAC bool_ss [UPDATE_APPLY] THEN
+FULL_SIMP_TAC bool_ss [] THEN
+METIS_TAC [])
 
 
 val lowest_first_colouring_satisfactory = store_thm(
 	"lowest_first_colouring_satisfactory", ``
 ! cs .
+  graph_reflects_conflicts cs /\
   graph_duplicate_free cs /\
   graph_edge_lists_well_formed cs ==>
   colouring_satisfactory (lowest_first_colouring cs) cs
@@ -876,6 +892,8 @@ Cases_on `h` THEN
 `graph_edge_lists_well_formed cs`
         by METIS_TAC [graph_edge_lists_well_formed_def, EVERY_DEF] THEN
 `graph_duplicate_free cs` by METIS_TAC [graph_duplicate_free_def] THEN
+`graph_reflects_conflicts cs`
+    by METIS_TAC [graph_reflects_conflicts_preserved] THEN
 `colouring_satisfactory (lowest_first_colouring cs) cs` by METIS_TAC [] THEN
 TACTICAL.REVERSE (`~(MEM (lowest_available_colour (lowest_first_colouring cs) r)
        (MAP ((q =+ lowest_available_colour (lowest_first_colouring cs) r)
@@ -922,6 +940,7 @@ val lowest_first_preference_colouring_def = Define `
 val lowest_first_preference_colouring_satisfactory = store_thm(
 	"lowest_first_preference_colouring_satisfactory", ``
 ! cs prefs .
+  graph_reflects_conflicts cs /\
   graph_duplicate_free cs /\
   graph_edge_lists_well_formed cs ==>
   colouring_satisfactory (lowest_first_preference_colouring cs prefs) cs
@@ -932,6 +951,8 @@ Cases_on `h` THEN
 `graph_edge_lists_well_formed cs`
         by METIS_TAC [graph_edge_lists_well_formed_def, EVERY_DEF] THEN
 `graph_duplicate_free cs` by METIS_TAC [graph_duplicate_free_def] THEN
+`graph_reflects_conflicts cs`
+    by METIS_TAC [graph_reflects_conflicts_preserved] THEN
 `colouring_satisfactory (lowest_first_preference_colouring cs prefs) cs`
 			by METIS_TAC [] THEN
 `~(MEM (lowest_available_colour (lowest_first_preference_colouring cs prefs) r)

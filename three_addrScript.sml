@@ -646,7 +646,8 @@ FULL_SIMP_TAC std_ss [LENGTH_MAP] THEN
 
 
 
-val mem_after_map = prove(``! x xs (c:num->num) .
+val mem_after_map = store_thm("mem_after_map",
+``! x xs (c:num->num) .
     MEM x xs ==> MEM (c x) (MAP c xs)``,
 RW_TAC std_ss [MEM_MAP] THEN Q.EXISTS_TAC `x`
 THEN EVAL_TAC THEN FULL_SIMP_TAC bool_ss [])
