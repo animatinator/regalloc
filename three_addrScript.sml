@@ -343,6 +343,19 @@ FULL_SIMP_TAC bool_ss [list_union_def] THEN
 `MEM x (list_union list list')` by METIS_TAC [] THEN
 METIS_TAC [insert_def, MEM])
 
+val mem_list_union = store_thm("mem_list_union", ``
+! x list list' .
+MEM x (list_union list list') ==>
+MEM x list \/ MEM x list'
+``,
+Induct_on `list` THEN1 (EVAL_TAC THEN DECIDE_TAC) THEN
+REPEAT STRIP_TAC THEN
+EVAL_TAC THEN
+FULL_SIMP_TAC bool_ss [list_union_def, insert_def] THEN
+Cases_on `MEM h (list_union list list')` THEN
+FULL_SIMP_TAC bool_ss [MEM] THEN
+METIS_TAC [])
+
 val list_union_flatten_def = Define `
     (list_union_flatten [] = []) /\
     (list_union_flatten (l::ls) = list_union l (list_union_flatten ls))
@@ -359,6 +372,20 @@ REPEAT STRIP_TAC THEN
 FULL_SIMP_TAC bool_ss [list_union_flatten_def] THEN
 Cases_on `h = list` THEN1 METIS_TAC [list_union_completeness] THEN
 METIS_TAC [MEM, list_union_completeness])
+
+val mem_list_union_flatten = store_thm("mem_list_union_flatten", ``
+! x xs .
+MEM x (list_union_flatten xs) ==>
+(? set . MEM set xs /\ MEM x set)
+``,
+Induct_on `xs` THEN1 (EVAL_TAC THEN DECIDE_TAC) THEN
+REPEAT STRIP_TAC THEN
+FULL_SIMP_TAC std_ss [list_union_flatten_def, MEM] THEN
+Cases_on `MEM x h` THEN1 (
+	 Q.EXISTS_TAC `h` THEN
+	 METIS_TAC []) THEN
+`MEM x (list_union_flatten xs)` by METIS_TAC [mem_list_union] THEN
+METIS_TAC [])
 
 (* gather list of conflicting registers for a given register *)
 val conflicts_for_register_def = Define `
@@ -570,8 +597,9 @@ EVAL_TAC)
 
 
 
-(* Proofs linking conflicting_sets and conflicts_for_register, to be used for
-proving that a 'satisfactory' colouring will satisfy colouring_ok *)
+(* Proofs linking conflicting_sets and conflicts_for_register, most of which are
+to be used for proving that a 'satisfactory' colouring will satisfy
+colouring_ok *)
 
 (* If a list of lists is being filtered for whether they contain x, and x is
 in 'list', 'list' is in the result. *)
@@ -643,6 +671,22 @@ FULL_SIMP_TAC std_ss [LENGTH_MAP] THEN
 `~(MEM (col (EL y s)) (MAP col (conflicts_for_register (EL y s) code live)))`
        by METIS_TAC [] THEN
 `col (EL x s) <> col (EL y s)` by METIS_TAC [])
+
+(* Any element of the set of registers conflicting with a register 'r' must
+belong to a conflicting set to which 'r' also belongs *)
+val conflicts_come_from_shared_conflicting_set = store_thm(
+    "conflicts_come_from_shared_conflicting_set", ``
+! r1 r2 code live .
+MEM r1 (conflicts_for_register r2 code live) ==>
+(? c . MEM c (conflicting_sets code live) /\ MEM r1 c /\ MEM r2 c)
+``,
+REPEAT STRIP_TAC THEN
+FULL_SIMP_TAC bool_ss [conflicts_for_register_def] THEN
+`MEM r1 (list_union_flatten (FILTER (\set . MEM r2 set) (conflicting_sets code live)))` by METIS_TAC [delete_def, MEM_FILTER] THEN
+IMP_RES_TAC mem_list_union_flatten THEN
+FULL_SIMP_TAC std_ss [MEM_FILTER] THEN
+Q.EXISTS_TAC `set'` THEN
+FULL_SIMP_TAC bool_ss [])
 
 
 

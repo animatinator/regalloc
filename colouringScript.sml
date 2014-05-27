@@ -141,8 +141,14 @@ graph_reflects_conflicts (get_conflicts code live)
 ``,
 REPEAT STRIP_TAC THEN
 FULL_SIMP_TAC std_ss [get_conflicts_def] THEN
-
-cheat)
+FULL_SIMP_TAC std_ss [graph_reflects_conflicts_def] THEN
+REPEAT STRIP_TAC THEN
+`rs1 = conflicts_for_register r1 code live` by cheat THEN
+`rs2 = conflicts_for_register r2 code live` by cheat THEN
+FULL_SIMP_TAC bool_ss [] THEN
+`r1 <> r2` by METIS_TAC [register_does_not_conflict_with_self] THEN
+IMP_RES_TAC conflicts_come_from_shared_conflicting_set THEN
+METIS_TAC [conflicting_registers_appear_in_each_others_conflicts])
 
 
 
