@@ -619,6 +619,14 @@ REPEAT STRIP_TAC THEN
 FULL_SIMP_TAC std_ss [SET_EQ_SUBSET] THEN
 STRIP_TAC THEN FULL_SIMP_TAC std_ss [SUBSET_DEF])
 
+val sorted_list_length = store_thm("sorted_list_length", ``
+! cs done .
+LENGTH cs = LENGTH (sort_not_considered_by_degree done cs)
+``,
+REPEAT STRIP_TAC THEN
+FULL_SIMP_TAC bool_ss [sort_not_considered_by_degree_def] THEN
+METIS_TAC [QSORT_PERM, PERM_LENGTH])
+
 
 (* The heuristic itself *)
 (* done is the list of vertices already considered, which are to be treated as
@@ -637,7 +645,7 @@ val lowest_degree_subgraph_heuristic_aux_def = tDefine
 		(r INSERT done) sorted ((r, rs)::cs'))
 ` (WF_REL_TAC ` measure (\ (done, cs, cs') . LENGTH cs)` THEN
 `! done cs . LENGTH (sort_not_considered_by_degree done cs) =
-LENGTH (cs)` by cheat THEN
+LENGTH (cs)` by METIS_TAC [sorted_list_length] THEN
 FULL_SIMP_TAC arith_ss [LENGTH])
 
 val lowest_degree_subgraph_heuristic_aux_ind = DB.fetch "-"
