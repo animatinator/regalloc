@@ -730,7 +730,7 @@ FULL_SIMP_TAC std_ss [heuristic_application_ok_def,
 REPEAT STRIP_TAC THEN
 `! x . MEM x (sort_not_considered_by_degree (\x. F) list)
    = MEM x list` by METIS_TAC [sort_not_considered_by_degree_def,
-     QSORT_MEM] THEN  (* TODO this is the changed bit *)
+     QSORT_MEM] THEN
 `! x . MEM x (sort_not_considered_by_degree (\x. F) list) \/ MEM x []
      = MEM x (lowest_degree_subgraph_heuristic_aux (\x. F)
        (sort_not_considered_by_degree (\x. F) list) [])`
@@ -880,16 +880,18 @@ REPEAT STRIP_TAC THEN
 EVAL_TAC THEN
 FULL_SIMP_TAC bool_ss [] THEN
 FULL_SIMP_TAC bool_ss [colouring_satisfactory_every] THEN
-(* TODO use duplicate-freeness for next line *)
-`! y ys . MEM (y, ys) cs ==> y <> r` by cheat THEN
+`! y ys . MEM (y, ys) cs ==> y <> r` by METIS_TAC [graph_duplicate_free_def,
+   MEM] THEN
 FULL_SIMP_TAC bool_ss [EVERY_MEM] THEN
 REPEAT STRIP_TAC THEN
 Cases_on `e` THEN
 `q <> r` by METIS_TAC [MEM] THEN
 EVAL_TAC THEN
 FULL_SIMP_TAC bool_ss [] THEN
-(* TODO the below follows by implication in assumptions *)
-`~(MEM (col q) (MAP col r'))` by cheat THEN
+`(\(x,xs) . ~(MEM (col x) (MAP col xs))) (q,r')` by METIS_TAC [] THEN
+`(\(x,xs) . ~(MEM (col x) (MAP col xs))) (q,r') = ~(MEM (col q) (MAP col r'))`
+    by EVAL_TAC THEN
+`~(MEM (col q) (MAP col r'))` by FULL_SIMP_TAC bool_ss [] THEN
 Tactical.REVERSE (Cases_on `MEM r r'`) THEN1
     METIS_TAC [function_irrelevant_update] THEN
 Tactical.REVERSE(`col q <> n` by ALL_TAC) THEN1
