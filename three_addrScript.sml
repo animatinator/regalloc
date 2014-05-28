@@ -251,22 +251,13 @@ FULL_SIMP_TAC std_ss [insert_def] THEN
 Cases_on `MEM n list` THEN
 FULL_SIMP_TAC bool_ss [duplicate_free_def])
 
-val duplicate_free_deletion = store_thm("duplicate_free_deletion",``
-    !n . duplicate_free (delete n list) = duplicate_free list``,
+val duplicate_free_deletion = store_thm("duplicate_free_deletion", ``
+    !n . duplicate_free list ==> duplicate_free (delete n list)``,
 Induct_on `list` THEN1 (EVAL_TAC THEN DECIDE_TAC) THEN
-RW_TAC bool_ss [delete_def] THEN
-Cases_on `n <> h` THEN1 (
-FULL_SIMP_TAC bool_ss [FILTER] THEN
+REPEAT STRIP_TAC THEN
 FULL_SIMP_TAC bool_ss [duplicate_free_def] THEN
-`duplicate_free (FILTER (\y . n <> y) list) = duplicate_free list`
-		by METIS_TAC [delete_def] THEN
-`MEM h (FILTER (\y . n <> y) list) = (n <> h) /\ MEM h list`
-     by FULL_SIMP_TAC std_ss [MEM_FILTER] THEN
-`~(MEM h (FILTER (\y . n <> y) list)) = ~(MEM h list)`
-       by METIS_TAC [delete_def] THEN
-METIS_TAC []) THEN
-FULL_SIMP_TAC bool_ss [FILTER, duplicate_free_def] THEN
-cheat) (*todo*)
+Cases_on `n <> h` THEN FULL_SIMP_TAC bool_ss [delete_def, FILTER,
+	 duplicate_free_def, MEM_FILTER])
 
 val get_live_has_no_duplicates = store_thm("get_live_has_no_duplicates",``
 !code live . duplicate_free live ==> duplicate_free (get_live code live)``,
