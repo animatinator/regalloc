@@ -134,6 +134,14 @@ REPEAT STRIP_TAC THEN
     by METIS_TAC [get_registers_duplicate_free] THEN
 METIS_TAC [graph_duplicate_free_if_vertices_duplicate_free])
 
+val mem_generated_edge_list = store_thm("mem_generated_edge_list", ``
+! x y f list .
+MEM (x, y) (MAP (\x . (x, f x)) list) ==>
+(y = f x)
+``,
+REPEAT STRIP_TAC THEN
+FULL_SIMP_TAC bool_ss [MEM_MAP, PAIR_EQ])
+
 val generated_graph_reflects_conflicts = store_thm(
     "generated_graph_reflects_conflicts", ``
 ! code live . duplicate_free live ==>
@@ -143,8 +151,10 @@ REPEAT STRIP_TAC THEN
 FULL_SIMP_TAC std_ss [get_conflicts_def] THEN
 FULL_SIMP_TAC std_ss [graph_reflects_conflicts_def] THEN
 REPEAT STRIP_TAC THEN
-`rs1 = conflicts_for_register r1 code live` by cheat THEN
-`rs2 = conflicts_for_register r2 code live` by cheat THEN
+`rs1 = conflicts_for_register r1 code live`
+     by METIS_TAC [mem_generated_edge_list] THEN
+`rs2 = conflicts_for_register r2 code live`
+     by METIS_TAC [mem_generated_edge_list] THEN
 FULL_SIMP_TAC bool_ss [] THEN
 `r1 <> r2` by METIS_TAC [register_does_not_conflict_with_self] THEN
 IMP_RES_TAC conflicts_come_from_shared_conflicting_set THEN
