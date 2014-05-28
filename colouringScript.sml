@@ -729,7 +729,8 @@ FULL_SIMP_TAC std_ss [heuristic_application_ok_def,
 	      lowest_degree_subgraph_heuristic_def] THEN
 REPEAT STRIP_TAC THEN
 `! x . MEM x (sort_not_considered_by_degree (\x. F) list)
-   = MEM x list` by cheat THEN
+   = MEM x list` by METIS_TAC [sort_not_considered_by_degree_def,
+     QSORT_MEM] THEN  (* TODO this is the changed bit *)
 `! x . MEM x (sort_not_considered_by_degree (\x. F) list) \/ MEM x []
      = MEM x (lowest_degree_subgraph_heuristic_aux (\x. F)
        (sort_not_considered_by_degree (\x. F) list) [])`
