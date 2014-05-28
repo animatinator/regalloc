@@ -861,7 +861,8 @@ val lowest_first_colouring_def = Define `
 `
 
 
-val colouring_satisfactory_every = prove(``
+val colouring_satisfactory_every = store_thm("colouring_satisfactory_every",
+``
 ! col cs .
 (colouring_satisfactory col cs) =
 (EVERY (\ (x, xs) . ~(MEM(col x) (MAP col xs))) cs)
