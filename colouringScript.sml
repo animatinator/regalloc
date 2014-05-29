@@ -517,7 +517,7 @@ val heuristic_application_ok_def = Define `
 
 val heuristic_insert_def = Define `
     (heuristic_insert f x [] = [x]) /\
-    (heuristic_insert f x (y::ys) = if (f x > f y) then x::y::ys
+    (heuristic_insert f x (y::ys) = if (f x < f y) then x::y::ys
     		      else y::(heuristic_insert f x ys))
 `
 
@@ -543,7 +543,7 @@ val insert_adds_correctly = prove(``
 ``,
 Induct_on `ys` THEN1 (EVAL_TAC THEN DECIDE_TAC) THEN
 EVAL_TAC THEN
-Cases_on `f x > f h` THEN1 (FULL_SIMP_TAC bool_ss [] THEN EVAL_TAC) THEN
+Cases_on `f x < f h` THEN1 (FULL_SIMP_TAC bool_ss [] THEN EVAL_TAC) THEN
 FULL_SIMP_TAC bool_ss [] THEN
 `MEM x (heuristic_insert f x ys)` by METIS_TAC [] THEN
 EVAL_TAC THEN METIS_TAC [])
@@ -558,7 +558,7 @@ Induct_on `list` THEN1 (EVAL_TAC THEN
 	  METIS_TAC [LIST_TO_SET, SUBSET_REFL, EMPTY_SUBSET]) THEN
 REPEAT STRIP_TAC THEN
 FULL_SIMP_TAC bool_ss [heuristic_insert_def] THEN
-Cases_on `f h' > f h` THEN1 (
+Cases_on `f h' < f h` THEN1 (
 	 FULL_SIMP_TAC bool_ss [] THEN
 	 METIS_TAC [LIST_TO_SET, INSERT_SING_UNION]) THEN
 FULL_SIMP_TAC bool_ss [] THEN
@@ -1027,5 +1027,42 @@ TACTICAL.REVERSE (`~(MEM
 `~(MEM q r)` by METIS_TAC [graph_edge_lists_well_formed_def,
        edge_list_well_formed_def, EVERY_DEF] THEN
 METIS_TAC [function_irrelevant_update, lowest_available_colour_is_valid])
+
+
+	  (* Examples *)
+
+(* Sample code block *)
+val sample_code = EVAL ``(Inst 1 2 3)::(Inst 4 1 2)::(Inst 5 3 4)
+::(Inst 6 1 5)::[]``
+
+(* Naive colouring *)
+val sample_code_naive = EVAL
+``
+MAP (naive_colouring (get_conflicts
+    ((Inst 1 2 3)::(Inst 4 1 2)::(Inst 5 3 4)::(Inst 6 1 5)::[])
+[])) [1;2;3;4;5;6]
+``
+
+(* Lowest-first colouring *)
+val sample_code_lowest_first = EVAL 
+``
+MAP (lowest_first_colouring (get_conflicts
+    ((Inst 1 2 3)::(Inst 4 1 2)::(Inst 5 3 4)::(Inst 6 1 5)::[])
+[])) [1;2;3;4;5;6]
+``
+
+(* Lowest-first colouring with highest-degree-first heuristic *)
+val sample_code_lowest_first_degree_heuristic = EVAL
+``
+MAP (lowest_first_colouring
+(
+	heuristic_sort
+		vertex_degree
+		(get_conflicts ((Inst 1 2 3)::(Inst 4 1 2)::(Inst 5 3 4)
+			       ::(Inst 6 1 5)::[]) [])
+)
+) [1;2;3;4;5;6]
+``
+
 
 val _ = export_theory();

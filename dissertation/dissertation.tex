@@ -238,7 +238,7 @@ Thus the graph resulting from applying this colouring is as follows:
   \centering
   \includegraphics[width=0.5\textwidth]{fig/backgroundGraphColoured.pdf}
   \caption{Clash graph generated for the sample code, after colouring}
-  \label{fig:backgroundGraph}
+  \label{fig:backgroundGraphColoured}
 \end{figure}
 
 The resulting code, which now uses only four registers, is given below:
@@ -864,6 +864,35 @@ Thus the verification of \texttt{naive\_colouring\_aux} is complete, and by the 
    \HOLConst{colouring_satisfactory} (\HOLConst{naive_colouring} \HOLFreeVar{cs}) \HOLFreeVar{cs}
 \end{alltt}
 
+\subsection{Example}
+
+To demonstrate that this algorithm works as expected, the function resulting from running it on the sample code given in Chapter~\ref{sec:background} is given below, along with the resulting code after colouring:
+
+\begin{minipage}{\textwidth}
+$1 \rightarrow 4$
+
+$2 \rightarrow 0$
+
+$3 \rightarrow 1$
+
+$4 \rightarrow 2$
+
+$5 \rightarrow 5$
+
+$6 \rightarrow 3$
+\end{minipage}
+
+\vspace{5mm}
+
+\begin{alltt}
+R4 = R0 + R1
+R2 = R4 * R0
+R5 = R1 - R2
+R3 = R4 + R5
+\end{alltt}
+
+This is using exactly the same number of registers as the source code, as a new register is assigned to every virtual register in the order in which they are considered.
+
 \section{Lowest-first colouring}
 
 The lowest-first algorithm is an improvement over na\"{\i}ve colouring which allows colours to be re-used where possible. Essentially, the function examines the vertices of the graph in an arbitrary order and assigns to each the lowest possible colour which does not conflict with the colours already assigned to any of its neighbours. This section explores the definition of this function and the proof of correctness, again using \texttt{colouring\_satisfactory} as the verification condition.
@@ -963,6 +992,35 @@ This is used to simplify the goal and assumptions, and then the definitions of \
 
 The lowest-first colouring algorithm is therefore correct with respect to \texttt{colouring\_satisfactory}. This is a reasonably good algorithm, but it is still fairly simplistic. In the next section, various heuristics which can further improve performance will be explored.
 
+\subsection{Example}
+
+Again, the algorithm was tested on the sample code from Chapter~\ref{sec:background}, and the resulting function is as follows:
+
+\begin{minipage}{\textwidth}
+$1 \rightarrow 2$
+
+$2 \rightarrow 0$
+
+$3 \rightarrow 3$
+
+$4 \rightarrow 1$
+
+$5 \rightarrow 1$
+
+$6 \rightarrow 0$
+\end{minipage}
+
+\vspace{5mm}
+
+This uses only four colours, but is still correct with respect to the graph:
+
+\begin{figure}[!ht]
+  \centering
+  \includegraphics[width=0.5\textwidth]{fig/backgroundGraphLowestFirst.pdf}
+  \caption{Lowest-first colouring of the sample code's clash graph}
+  \label{fig:backgroundGraphLowestFirst}
+\end{figure}
+
 \section{Heuristics}
 
 The two algorithms developed so far work reasonably well in practice, but can be greatly improved with extra heuristics. These heuristics are used to control the order in which vertices are considered by the colouring algorithm, so that particular vertices are prioritised and others are left as late as possible. In this section the approach to modelling heuristics is explored, and a few real heuristics are examined and verified.
@@ -1032,6 +1090,35 @@ As a simple example, consider the following heuristic function which calculates 
 Using this as the sort function with \texttt{heuristic\_sort} will sort vertices according to degree, a common heuristic used when colouring graphs. Its correctness now follows trivially from the theorems proved above.
 
 Many other sort-based heuristics are possible. For instance, if only a finite number of registers are available (a situation which is explored in Section \ref{sec:extensionsFiniteRegisters}), we might want to prioritise registers which are frequently accessed for register storage and spill those which are used less often. In this case, the clash graph generator could simply tag vertices with the number of times they are accessed in the code, and this could be used in a heuristic sort to order vertices according to how often they are accessed.
+
+\subsubsection{Sample run}
+
+To demonstrate that this heuristic improves generated colourings, the lowest-first colouring algorithm was run on the sample code from Chapter~\ref{sec:background} again, this time using the highest-degree-first heuristic. The resulting function is as follows:
+
+\begin{minipage}{\textwidth}
+$1 \rightarrow 1$
+
+$2 \rightarrow 0$
+
+$3 \rightarrow 2$
+
+$4 \rightarrow 0$
+
+$5 \rightarrow 0$
+
+$6 \rightarrow 0$
+\end{minipage}
+
+\vspace{5mm}
+
+Adding the heuristic has reduced the number of colours used to only three -- the minimum number of colours for the graph:
+
+\begin{figure}[!ht]
+  \centering
+  \includegraphics[width=0.5\textwidth]{fig/backgroundGraphLowestFirstDegreeHeuristic.pdf}
+  \caption{Lowest-first colouring of the sample code's clash graph, using the highest-degree-first heuristic}
+  \label{fig:backgroundGraphLowestFirstDegreeHeuristic}
+\end{figure}
 
 \subsection{More complex heuristics}
 

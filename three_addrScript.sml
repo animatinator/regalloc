@@ -1064,5 +1064,4 @@ val get_uses_function_def = Define `
     (get_uses_function code = (\r . count_uses r code))
 `
 
-
 val _ = export_theory();
