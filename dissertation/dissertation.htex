@@ -39,7 +39,7 @@
 \setcounter{page}{0}
 \pagestyle{plain}
 \tableofcontents
-%\listoffigures
+\listoffigures
 %\listoftables
 
 \onehalfspacing
@@ -86,6 +86,24 @@ Another thing to consider is that some target architectures have constraints on 
 \section{Isomorphism to graph colouring}
 
 The most common approach to register allocation is to reduce the problem to one of graph colouring, where we have a graph which we wish to colour with a maximum of $K$ colours such that no two adjacent vertices share the same colour (Weisstein \cite{wolframGraphColouring}). Given the knowledge of which variables are live at the same time, we construct a clash graph in which the vertices represent registers and an edge between two vertices exists where the corresponding registers are simultaneously live. Treating a colour as representing a physical register on the target machine, we then attempt to `colour' the graph with target registers such that vertices which are linked by a clash edge are always given different colours.
+
+For example, consider the code below, where each instruction is annotated with the set of variables live immediately before it:
+
+\begin{alltt}
+R1 = R2 + R3  \(\{R_2, R_3\}\)
+R4 = R1 * R2  \(\{R_1, R_2, R_3\}\)
+R5 = R3 - R4  \(\{R_1, R_3, R_4\}\)
+R6 = R1 + R5  \(\{R_1, R_5\}\)
+\end{alltt}
+
+The clash graph for this code is given below:
+
+\begin{figure}[!ht]
+  \centering
+  \includegraphics[width=0.5\textwidth]{fig/backgroundGraph.pdf}
+  \caption{Clash graph generated for the sample code}
+  \label{fig:backgroundGraph}
+\end{figure}
 
 A successful colouring will naturally give a mapping from virtual to physical registers enforcing that no registers which are simultaneously live are placed in the same physical register. Formally verifying that the colouring resulting from this process will never affect the behaviour of the code being compiled was the core objective of this project.
 
@@ -194,6 +212,38 @@ Applying a colouring is then very simple: the function iterates through instruct
 
 \begin{alltt}\small
 	\HOLthm[def]{three_addr.apply_def}
+\end{alltt}
+
+For example, a sample colouring function for the graph in Chapter~\ref{sec:background} is given below:
+
+$1 \rightarrow 1$
+
+$2 \rightarrow 3$
+
+$3 \rightarrow 2$
+
+$4 \rightarrow 0$
+
+$5 \rightarrow 2$
+
+$6 \rightarrow 0$
+
+Thus the graph resulting from applying this colouring is as follows:
+
+\begin{figure}[!ht]
+  \centering
+  \includegraphics[width=0.5\textwidth]{fig/backgroundGraphColoured.pdf}
+  \caption{Clash graph generated for the sample code, after colouring}
+  \label{fig:backgroundGraph}
+\end{figure}
+
+The resulting code, which now uses only four registers, is given below:
+
+\begin{alltt}
+R1 = R3 + R2
+R0 = R1 * R3
+R2 = R2 - R0
+R0 = R1 + R2
 \end{alltt}
 
 This completes the definition of the basic primitives used to represent code in the proofs.
