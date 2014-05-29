@@ -1040,7 +1040,7 @@ The simplest kind of heuristic is one which simply sorts elements based on some 
 \begin{alltt}\small
 	\HOLConst{heuristic_insert} \HOLFreeVar{f} \HOLFreeVar{x} [] = [\HOLFreeVar{x}]
 \HOLConst{heuristic_insert} \HOLFreeVar{f} \HOLFreeVar{x} (\HOLFreeVar{y}::\HOLFreeVar{ys}) =
-\HOLKeyword{if} \HOLFreeVar{f} \HOLFreeVar{x} \HOLTokenGt{} \HOLFreeVar{f} \HOLFreeVar{y} \HOLKeyword{then} \HOLFreeVar{x}::\HOLFreeVar{y}::\HOLFreeVar{ys} \HOLKeyword{else} \HOLFreeVar{y}::\HOLConst{heuristic_insert} \HOLFreeVar{f} \HOLFreeVar{x} \HOLFreeVar{ys}
+\HOLKeyword{if} \HOLFreeVar{f} \HOLFreeVar{x} \HOLTokenLt{} \HOLFreeVar{f} \HOLFreeVar{y} \HOLKeyword{then} \HOLFreeVar{x}::\HOLFreeVar{y}::\HOLFreeVar{ys} \HOLKeyword{else} \HOLFreeVar{y}::\HOLConst{heuristic_insert} \HOLFreeVar{f} \HOLFreeVar{x} \HOLFreeVar{ys}
 	\HOLConst{heuristic_sort} \HOLFreeVar{f} [] = []
 \HOLConst{heuristic_sort} \HOLFreeVar{f} (\HOLFreeVar{x}::\HOLFreeVar{xs}) =
 \HOLConst{heuristic_insert} \HOLFreeVar{f} \HOLFreeVar{x} (\HOLConst{heuristic_sort} \HOLFreeVar{f} \HOLFreeVar{xs})

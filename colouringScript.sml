@@ -135,7 +135,7 @@ REPEAT STRIP_TAC THEN
 METIS_TAC [graph_duplicate_free_if_vertices_duplicate_free])
 
 val mem_generated_edge_list = store_thm("mem_generated_edge_list", ``
-! x y f list .
+! x y (f:num->num list) list .
 MEM (x, y) (MAP (\x . (x, f x)) list) ==>
 (y = f x)
 ``,
@@ -151,8 +151,18 @@ REPEAT STRIP_TAC THEN
 FULL_SIMP_TAC std_ss [get_conflicts_def] THEN
 FULL_SIMP_TAC std_ss [graph_reflects_conflicts_def] THEN
 REPEAT STRIP_TAC THEN
+ASSUME_TAC mem_generated_edge_list THEN
+Q.PAT_ASSUM `!x y f list . 
+    MEM (x,y) (MAP (\x. (x, f x)) list) ==> (y = f x)`
+    (ASSUME_TAC o Q.SPECL [`r1`,`rs1`,
+    `\x. conflicts_for_register x code live`]) THEN
 `rs1 = conflicts_for_register r1 code live`
-     by METIS_TAC [mem_generated_edge_list] THEN
+     by METIS_TAC [] THEN
+ASSUME_TAC mem_generated_edge_list THEN
+Q.PAT_ASSUM `!x y f list .
+    MEM (x,y) (MAP (\x. (x, f x)) list) ==> (y = f x)`
+    (ASSUME_TAC o Q.SPECL [`r2`,`rs2`,
+    `\x. conflicts_for_register x code live`]) THEN
 `rs2 = conflicts_for_register r2 code live`
      by METIS_TAC [mem_generated_edge_list] THEN
 FULL_SIMP_TAC bool_ss [] THEN
