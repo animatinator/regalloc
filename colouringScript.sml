@@ -1064,5 +1064,13 @@ MAP (lowest_first_colouring
 ) [1;2;3;4;5;6]
 ``
 
+(* Finite register spilling example *)
+val spill_stores_loads_code = EVAL
+``
+spill_loads_stores 3 (to_spill_inst
+    ((Inst 1 2 3)::(Inst 4 1 2)::(Inst 5 3 4)::(Inst 6 1 5)::[])
+)
+``
+
 
 val _ = export_theory();
