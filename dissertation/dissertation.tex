@@ -96,7 +96,7 @@ R5 = R3 - R4  \(\{R_1, R_3, R_4\}\)
 R6 = R1 + R5  \(\{R_1, R_5\}\)
 \end{alltt}
 
-The clash graph for this code is given below:
+The clash graph for this code is given in Figure~\ref{fig:backgroundGraph}.
 
 \begin{figure}[!ht]
   \centering
@@ -232,7 +232,7 @@ $5 \rightarrow 2$
 
 $6 \rightarrow 0$
 
-Thus the graph resulting from applying this colouring is as follows:
+Thus the graph resulting from applying this colouring is as shown in Figure~\ref{fig:backgroundGraphColoured}.
 
 \begin{figure}[!ht]
   \centering
@@ -330,7 +330,19 @@ Again, a completeness proof was required for later proofs. This is given below:
 
 The proof used the same technique as the last one, combined with the fact that the union of two lists contains all elements from both lists (as was just proved).
 
-This completes the basic definitions and proofs for list-based sets. An intersection operation was not required for the sets used, as there was no function in the algorithm which used it. Additionally, only completeness of unions was required -- interestingly, it was not necessary to prove that they didn't introduce any extra elements for any later proofs. This is a side-effect of all live variable analysis methods generally computing safe over-approximations: an algorithm which satisfies an overly large set of conflicts will automatically satisfy a smaller, more precise set.
+Another convenient property is that membership of a set union implies membership of one of the original sets. This was again proved for simple unions first, by a simple induction:
+
+\begin{alltt}\small
+	\HOLTokenTurnstile{} \HOLConst{MEM} \HOLFreeVar{x} (\HOLConst{list_union} \HOLFreeVar{list} \HOLFreeVar{list\sp{\prime}}) \HOLTokenImp{} \HOLConst{MEM} \HOLFreeVar{x} \HOLFreeVar{list} \HOLTokenDisj{} \HOLConst{MEM} \HOLFreeVar{x} \HOLFreeVar{list\sp{\prime}}
+\end{alltt}
+
+Using this proof it was then possible to prove the equivalent property for flattening unions by induction:
+
+\begin{alltt}\small
+	\HOLTokenTurnstile{} \HOLConst{MEM} \HOLFreeVar{x} (\HOLConst{list_union_flatten} \HOLFreeVar{xs}) \HOLTokenImp{} \HOLTokenExists{}\HOLBoundVar{set}. \HOLConst{MEM} \HOLBoundVar{set} \HOLFreeVar{xs} \HOLTokenConj{} \HOLConst{MEM} \HOLFreeVar{x} \HOLBoundVar{set}
+\end{alltt}
+
+This completes the basic definitions and proofs for list-based sets. An intersection operation was not required for the sets used, as there was no function in the algorithm which used it.
 
 \subsection{Live variable analysis}
 
@@ -1012,7 +1024,7 @@ $6 \rightarrow 0$
 
 \vspace{5mm}
 
-This uses only four colours, but is still correct with respect to the graph:
+This uses only four colours, but is still correct with respect to the graph, as can be seen in Figure~\ref{fig:backgroundGraphLowestFirst}.
 
 \begin{figure}[!ht]
   \centering
@@ -1023,7 +1035,7 @@ This uses only four colours, but is still correct with respect to the graph:
 
 \section{Heuristics}
 
-The two algorithms developed so far work reasonably well in practice, but can be greatly improved with extra heuristics. These heuristics are used to control the order in which vertices are considered by the colouring algorithm, so that particular vertices are prioritised and others are left as late as possible. In this section the approach to modelling heuristics is explored, and a few real heuristics are examined and verified.
+The two algorithms developed so far are sufficient to generate a valid colouring, and the lowest-first algorithm makes some effort to reduce the number of registers used, but both can be greatly improved with extra heuristics. These heuristics are used to control the order in which vertices are considered by the colouring algorithm, so that particular vertices are prioritised and others are left as late as possible. In this section the approach to modelling heuristics is explored, and a few real heuristics are examined and verified.
 
 \subsection{Modelling heuristics}
 
@@ -1111,7 +1123,7 @@ $6 \rightarrow 0$
 
 \vspace{5mm}
 
-Adding the heuristic has reduced the number of colours used to only three -- the minimum number of colours for the graph:
+Adding the heuristic has reduced the number of colours used to only three -- the minimum number of colours for the graph -- as shown in Figure~\ref{fig:backgroundGraphLowestFirstDegreeHeuristic}.
 
 \begin{figure}[!ht]
   \centering
@@ -1146,11 +1158,11 @@ This uses the HOL \texttt{QSORT} algorithm, passing in a predicate which states 
 The main algorithm uses an auxiliary function which iterates through a list (assumed to be sorted by the above algorithm), putting the top element on the front of an accumulator ($cs'$), sorting the tail and calling itself recursively with the sorted tail and updated set of already-considered vertices ($done$):
 
 \begin{alltt}\small
-	\HOLConst{lowest_degree_subgraph_heuristic_aux} \HOLFreeVar{done} [] \HOLFreeVar{cs\sp{\prime}} = \HOLConst{REVERSE} \HOLFreeVar{cs\sp{\prime}}
-\HOLConst{lowest_degree_subgraph_heuristic_aux} \HOLFreeVar{done} ((\HOLFreeVar{r},\HOLFreeVar{rs})::\HOLFreeVar{cs}) \HOLFreeVar{cs\sp{\prime}} =
+	\HOLConst{smallest_last_heuristic_aux} \HOLFreeVar{done} [] \HOLFreeVar{cs\sp{\prime}} = \HOLConst{REVERSE} \HOLFreeVar{cs\sp{\prime}}
+\HOLConst{smallest_last_heuristic_aux} \HOLFreeVar{done} ((\HOLFreeVar{r},\HOLFreeVar{rs})::\HOLFreeVar{cs}) \HOLFreeVar{cs\sp{\prime}} =
 (\HOLKeyword{let} \HOLBoundVar{sorted} = \HOLConst{sort_not_considered_by_degree} (\HOLFreeVar{r} INSERT \HOLFreeVar{done}) \HOLFreeVar{cs}
  \HOLKeyword{in}
-   \HOLConst{lowest_degree_subgraph_heuristic_aux} (\HOLFreeVar{r} INSERT \HOLFreeVar{done}) \HOLBoundVar{sorted}
+   \HOLConst{smallest_last_heuristic_aux} (\HOLFreeVar{r} INSERT \HOLFreeVar{done}) \HOLBoundVar{sorted}
      ((\HOLFreeVar{r},\HOLFreeVar{rs})::\HOLFreeVar{cs\sp{\prime}}))
 \end{alltt}
 
@@ -1170,8 +1182,8 @@ Due to the fact that the vertex list is sorted each time, termination of this fu
 The main function calls the auxiliary with an empty `done' set\footnote{As HOL sets are represented as characteristic functions of type $\alpha \rightarrow bool$, the empty set is represented by $\lambda x . F$} and accumulator, and a sorted version of the input vertex list:
 
 \begin{alltt}\small
-	\HOLConst{lowest_degree_subgraph_heuristic} \HOLFreeVar{cs} =
-\HOLConst{lowest_degree_subgraph_heuristic_aux} (\HOLTokenLambda{}\HOLBoundVar{x}. \HOLConst{F})
+	\HOLConst{smallest_last_heuristic} \HOLFreeVar{cs} =
+\HOLConst{smallest_last_heuristic_aux} (\HOLTokenLambda{}\HOLBoundVar{x}. \HOLConst{F})
   (\HOLConst{sort_not_considered_by_degree} (\HOLTokenLambda{}\HOLBoundVar{x}. \HOLConst{F}) \HOLFreeVar{cs}) []
 \end{alltt}
 
@@ -1199,7 +1211,7 @@ The next important lemma states that anything passed in as the accumulator will 
 
 \begin{alltt}\small
 	\HOLTokenTurnstile{} \HOLConst{MEM} \HOLFreeVar{x} \HOLFreeVar{acc} \HOLTokenImp{}
-   \HOLConst{MEM} \HOLFreeVar{x} (\HOLConst{lowest_degree_subgraph_heuristic_aux} \HOLFreeVar{done} \HOLFreeVar{list} \HOLFreeVar{acc})
+   \HOLConst{MEM} \HOLFreeVar{x} (\HOLConst{smallest_last_heuristic_aux} \HOLFreeVar{done} \HOLFreeVar{list} \HOLFreeVar{acc})
 \end{alltt}
 
 With the custom induction rule for \texttt{lowest\_degree\_subgraph\_heuristic\_aux}, this was relatively simple to prove by expanding definitions and using the fact that reversing a list preserves its members (a standard HOL axiom).
@@ -1208,7 +1220,7 @@ The next step was to equate the set returned by the heuristic with the sets of e
 
 \begin{alltt}\small
 	\HOLTokenTurnstile{} \HOLConst{MEM} \HOLFreeVar{x} \HOLFreeVar{list} \HOLTokenDisj{} \HOLConst{MEM} \HOLFreeVar{x} \HOLFreeVar{acc} \HOLTokenEquiv{}
-   \HOLConst{MEM} \HOLFreeVar{x} (\HOLConst{lowest_degree_subgraph_heuristic_aux} \HOLFreeVar{done} \HOLFreeVar{list} \HOLFreeVar{acc})
+   \HOLConst{MEM} \HOLFreeVar{x} (\HOLConst{smallest_last_heuristic_aux} \HOLFreeVar{done} \HOLFreeVar{list} \HOLFreeVar{acc})
 \end{alltt}
 
 This again used the custom induction rule. The base case was relatively simple, but the induction case required more work. The trick was to case split on whether the arbitrary $x$ was equal to the current value at the top of the vertex list, in which case the goal follows easily by simplifying. In the other situation, a case split was performed on whether $x$ belongs to the accumulator. If it does, it trivially exists in the result by the lemma proved earlier. Otherwise, we case split again to see whether it belongs to the tail of the list of vertices passed in. In either case, the required goal follows by expanding definitions and using the earlier lemma stating that the sort function preserves the set of elements passed to it. Thus the proof was completed, and the heuristic was shown to be correct.

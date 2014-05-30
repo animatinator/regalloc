@@ -656,24 +656,24 @@ vertices included in done *)
 is considered in the correct order (colouring works back-to-front) *)
 (* Note that the algorithm assumes the list passed in as the second argument is
 sorted *)
-val lowest_degree_subgraph_heuristic_aux_def = tDefine
-    "lowest_degree_subgraph_heuristic_aux" `
-    (lowest_degree_subgraph_heuristic_aux done [] cs' = REVERSE cs') /\
-    (lowest_degree_subgraph_heuristic_aux done ((r, rs)::cs) cs' =
+val smallest_last_heuristic_aux_def = tDefine
+    "smallest_last_heuristic_aux" `
+    (smallest_last_heuristic_aux done [] cs' = REVERSE cs') /\
+    (smallest_last_heuristic_aux done ((r, rs)::cs) cs' =
         let sorted = (sort_not_considered_by_degree (r INSERT done) cs) in
-        lowest_degree_subgraph_heuristic_aux
+        smallest_last_heuristic_aux
 		(r INSERT done) sorted ((r, rs)::cs'))
 ` (WF_REL_TAC ` measure (\ (done, cs, cs') . LENGTH cs)` THEN
 `! done cs . LENGTH (sort_not_considered_by_degree done cs) =
 LENGTH (cs)` by METIS_TAC [sorted_list_length] THEN
 FULL_SIMP_TAC arith_ss [LENGTH])
 
-val lowest_degree_subgraph_heuristic_aux_ind = DB.fetch "-"
-    "lowest_degree_subgraph_heuristic_aux_ind"
+val smallest_last_heuristic_aux_ind = DB.fetch "-"
+    "smallest_last_heuristic_aux_ind"
 
-val lowest_degree_subgraph_heuristic_def = Define `
-    (lowest_degree_subgraph_heuristic cs =
-        lowest_degree_subgraph_heuristic_aux (\x . F)
+val smallest_last_heuristic_def = Define `
+    (smallest_last_heuristic cs =
+        smallest_last_heuristic_aux (\x . F)
 	    (sort_not_considered_by_degree (\x . F) cs) [])
 `
 
@@ -690,40 +690,40 @@ FULL_SIMP_TAC bool_ss [sort_not_considered_by_degree_def] THEN
 METIS_TAC [QSORT_MEM, set_list_equality])
 
 (* All values belonging to the accumulator variable in a call to
-lowest_degree_subgraph_heuristic_aux will feature in the result *)
+smallest_last_heuristic_aux will feature in the result *)
 val acc_returned = store_thm("acc_returned", ``
 ! done list acc .
-MEM x acc ==> MEM x (lowest_degree_subgraph_heuristic_aux done list acc)
+MEM x acc ==> MEM x (smallest_last_heuristic_aux done list acc)
 ``,
-recInduct lowest_degree_subgraph_heuristic_aux_ind THEN
+recInduct smallest_last_heuristic_aux_ind THEN
 STRIP_TAC THEN1 (
-    FULL_SIMP_TAC std_ss [lowest_degree_subgraph_heuristic_aux_def] THEN
+    FULL_SIMP_TAC std_ss [smallest_last_heuristic_aux_def] THEN
     METIS_TAC [LIST_TO_SET_REVERSE]) THEN
 REPEAT STRIP_TAC THEN
 FULL_SIMP_TAC bool_ss [LET_DEF] THEN
 `MEM x ((r, rs)::cs')` by METIS_TAC [MEM] THEN
-FULL_SIMP_TAC bool_ss [lowest_degree_subgraph_heuristic_aux_def] THEN
+FULL_SIMP_TAC bool_ss [smallest_last_heuristic_aux_def] THEN
 FULL_SIMP_TAC bool_ss [LET_DEF])
 
 (* Being a member of the result of sorting with the lowest-degree subgraph
 heuristic is equivalent to being a member of the original list or of the
 accumulator variable passed in *)
-val lowest_degree_subgraph_heuristic_aux_MEM = store_thm(
-    "lowest_degree_subgraph_heuristic_aux_MEM", ``
+val smallest_last_heuristic_aux_MEM = store_thm(
+    "smallest_last_heuristic_aux_MEM", ``
 ! done list acc .
 MEM x list \/ MEM x acc
-= MEM x (lowest_degree_subgraph_heuristic_aux done list acc)
+= MEM x (smallest_last_heuristic_aux done list acc)
 ``,
-recInduct lowest_degree_subgraph_heuristic_aux_ind THEN
+recInduct smallest_last_heuristic_aux_ind THEN
 STRIP_TAC THEN1 (
-    FULL_SIMP_TAC bool_ss [lowest_degree_subgraph_heuristic_aux_def,
+    FULL_SIMP_TAC bool_ss [smallest_last_heuristic_aux_def,
         MEM] THEN
     METIS_TAC [LIST_TO_SET_REVERSE]) THEN
 REPEAT STRIP_TAC THEN
 FULL_SIMP_TAC bool_ss [] THEN
 Cases_on `x = (r,rs)` THEN1 (
 	 FULL_SIMP_TAC bool_ss [MEM] THEN
-	 FULL_SIMP_TAC bool_ss [lowest_degree_subgraph_heuristic_aux_def] THEN
+	 FULL_SIMP_TAC bool_ss [smallest_last_heuristic_aux_def] THEN
 	 FULL_SIMP_TAC bool_ss [LET_DEF]) THEN
 Cases_on `MEM x cs'` THEN1 (METIS_TAC [acc_returned]) THEN
 FULL_SIMP_TAC bool_ss [MEM] THEN
@@ -731,32 +731,32 @@ Cases_on `MEM x cs` THEN1 (
 	 FULL_SIMP_TAC bool_ss [] THEN
 	 `MEM x (sort_not_considered_by_degree (r INSERT done) cs)`
 	      by METIS_TAC [sort_not_considered_by_degree_ok] THEN
-	  FULL_SIMP_TAC bool_ss [lowest_degree_subgraph_heuristic_aux_def] THEN
+	  FULL_SIMP_TAC bool_ss [smallest_last_heuristic_aux_def] THEN
 	  FULL_SIMP_TAC bool_ss [LET_DEF]) THEN
 FULL_SIMP_TAC bool_ss [] THEN
 STRIP_TAC THEN
-FULL_SIMP_TAC bool_ss [lowest_degree_subgraph_heuristic_aux_def] THEN
+FULL_SIMP_TAC bool_ss [smallest_last_heuristic_aux_def] THEN
 FULL_SIMP_TAC bool_ss [LET_DEF] THEN
 `~(MEM x (sort_not_considered_by_degree (r INSERT done) cs))`
        by METIS_TAC [sort_not_considered_by_degree_ok])
 
 (* The lowest-degree subgraph heuristic satisfies heuristic_application_ok *)
-val lowest_degree_subgraph_heuristic_ok = store_thm(
-    "lowest_degree_subgraph_heuristic_ok", ``
-heuristic_application_ok lowest_degree_subgraph_heuristic
+val smallest_last_heuristic_ok = store_thm(
+    "smallest_last_heuristic_ok", ``
+heuristic_application_ok smallest_last_heuristic
 ``,
 FULL_SIMP_TAC std_ss [heuristic_application_ok_def,
-	      lowest_degree_subgraph_heuristic_def] THEN
+	      smallest_last_heuristic_def] THEN
 REPEAT STRIP_TAC THEN
 `! x . MEM x (sort_not_considered_by_degree (\x. F) list)
    = MEM x list` by METIS_TAC [sort_not_considered_by_degree_def,
      QSORT_MEM] THEN
 `! x . MEM x (sort_not_considered_by_degree (\x. F) list) \/ MEM x []
-     = MEM x (lowest_degree_subgraph_heuristic_aux (\x. F)
+     = MEM x (smallest_last_heuristic_aux (\x. F)
        (sort_not_considered_by_degree (\x. F) list) [])`
-    by METIS_TAC [lowest_degree_subgraph_heuristic_aux_MEM] THEN
+    by METIS_TAC [smallest_last_heuristic_aux_MEM] THEN
 `! x . MEM x (sort_not_considered_by_degree (\x. F) list)
-    = MEM x (lowest_degree_subgraph_heuristic_aux (\x. F)
+    = MEM x (smallest_last_heuristic_aux (\x. F)
        (sort_not_considered_by_degree (\x. F) list) [])` by ALL_TAC THEN1 (
     REPEAT STRIP_TAC THEN
     Cases_on `MEM x (sort_not_considered_by_degree (\x . F) list)` THEN1 (
@@ -767,7 +767,7 @@ REPEAT STRIP_TAC THEN
     `MEM x (sort_not_considered_by_degree (\x. F) list) \/ MEM x []`
     by METIS_TAC [] THEN
     `~(MEM x [])` by METIS_TAC [MEM]) THEN
-`! x . MEM x (lowest_degree_subgraph_heuristic_aux (\x. F)
+`! x . MEM x (smallest_last_heuristic_aux (\x. F)
          (sort_not_considered_by_degree (\x. F) list) [])
     = MEM x list` by METIS_TAC [] THEN
 METIS_TAC [set_list_equality])
