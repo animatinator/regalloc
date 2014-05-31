@@ -176,7 +176,7 @@ The approach used in this project was to separate the sub-stages of allocation a
 
 \section*{Introduction}
 
-In order to achieve a complete end-to-end verification, it was decided that the verified allocator should take in some representation of three-address code (typical of this stage in the compilation process), and output three-address code with registers allocated. The overall proof would therefore show that the behaviour of the resulting code was exactly the same as that of the source in all situations. For this reason, a simplified representation of three-address code and an evaluation function were developed and an algorithm to generate clash graphs was verified. This chapter explores the representation used, the way `colouring' registers was represented and the development and verification of the clash graph generator, along with the way a `correct' register allocation was defined. The proofs showing that these definitions are correct and linking them to the project's overall goal will follow in Chapter \ref{sec:bringingTogether}.
+In order to achieve a complete end-to-end verification, it was decided that the verified allocator should take in some representation of three-address code (typical of this stage in the compilation process), and output three-address code with registers allocated. The overall proof would therefore show that the behaviour of the resulting code was exactly the same as that of the source in all situations. This chapter explores the representation used, the way `colouring' registers was represented and the development and verification of the clash graph generator, along with the way a `correct' register allocation was defined. The proofs showing that these definitions are correct and linking them to the project's overall goal will follow in Chapter \ref{sec:bringingTogether}.
 
 \section{Three-address code representation}
 
@@ -250,12 +250,11 @@ This completes the definition of the basic primitives used to represent code in 
 
 \section{Live variables and clash graphs}
 
-This section describes the definitions and functions used in producing a verified clash graph generator, and covers the lemmas and proofs used to prove its correctness. The first subsection demonstrates the representation of sets using lists, which was adopted to simplify definitions and proofs, and many of the properties proved of such sets which were vital in later proofs. Verifying a clash graph generator was then handled in two stages: first, a live variable analysis was implemented and proven correct. A clash graph generator was then developed using the live variable analysis, and various important properties were verified to aid later proofs. Section~\ref{sec:colouringOk} details how the correctness of a generated colouring was defined, a definition which was
-fundamental to the rest of the project.
+This section describes the definitions and functions used in producing a verified clash graph generator, and covers the lemmas and proofs used to prove its correctness. Section~\ref{sec:colouringOk} details how the correctness of a generated colouring was defined, a definition which was fundamental to the rest of the project.
 
 \subsection{Set representation and proofs}
 
-As mentioned, it was decided that for the purposes of the project it would be most convenient to represent sets as lists rather than using HOL's set primitives. Using lists made it considerably easier to define functions iterating over elements of a set, and made many of the proofs and definitions a lot easier to work with. Furthermore, lists allow for an ordering to exist, which was particularly useful when applying heuristics to vertices of clash graphs. The downside was that a number of properties of sets had to be verified, and showing that various set operations preserved its duplicate-freeness took a lot of extra effort. (The necessary proofs and definitions related to duplicate-freeness are given in Section~\ref{sec:duplicateFree}.)
+For the purposes of the project, it was decided that sets should be represented as lists rather than using HOL's set primitives. Using lists made it considerably easier to define functions iterating over elements of a set, and made many of the proofs and definitions a lot easier to work with. Furthermore, lists allow for an ordering to exist, which was particularly useful when applying heuristics to vertices of clash graphs. The downside was that a number of properties of sets had to be verified, and showing that various set operations preserved its duplicate-freeness took a lot of extra effort. (The necessary proofs and definitions related to duplicate-freeness are given in Section~\ref{sec:duplicateFree}.)
 
 The two basic operations on sets are insertion and deletion of elements. The definitions of these for `list sets' are given below:
 
@@ -279,13 +278,13 @@ This just states that inserting an element does indeed add it -- it is correct w
 This states that if $x$ is a member of a set with a value inserted, and it is not equal to that value, then it must be a member of the original set. The proof is a trivial case split on whether $y$ belongs to the original set, simplifying definitions in each case to prove the goal.
 
 \begin{alltt}\small
-	\HOLthm[rule]{three_addr.mem_after_insertion}
+	\HOLthm{three_addr.mem_after_insertion}
 \end{alltt}
 
 The proof of this is a simple expansion of the definition of insertion, and shows that inserting an element retains the elements already there.
 
 \begin{alltt}\small
-	\HOLthm[rule]{three_addr.not_mem_after_insertion}
+	\HOLthm{three_addr.not_mem_after_insertion}
 \end{alltt}
 
 The contrapositive of the above, this is a useful way of simplifying goals where some value isn't an element of a generated set.
@@ -305,13 +304,13 @@ It was also necessary to implement set union, and union over multiple sets. The 
 It was necessary to show that this definitely contains all elements from both sets. The relevant property is given below, and was proven by induction on the size of the first set in the union by demonstrating that once $x$ is reached it is guaranteed to be included in the result.
 
 \begin{alltt}\small
-	\HOLthm[rule]{three_addr.list_union_completeness}
+	\HOLthm{three_addr.list_union_completeness}
 \end{alltt}
 
 Union over multiple sets, here referred to as a flattening union, is defined by recursively applying \texttt{list_union} to pairs of sets from the end of the list forwards:
 
 \begin{alltt}\small
-	\HOLthm[def]{three_addr.list_union_flatten_def}
+	\HOLthm{three_addr.list_union_flatten_def}
 \end{alltt}
 
 Again, a completeness proof was required for later proofs. This is given below:
@@ -338,13 +337,13 @@ This completes the basic definitions and proofs for list-based sets. An intersec
 
 \subsection{Live variable analysis}
 
-As mentioned earlier, the decision to represent a block of code as a simple list of instructions makes live variable analysis noticeably less complex. The definition used is given below:
+As mentioned earlier, the decision to represent a block of code as a simple list of instructions makes live variable analysis noticeably less complex. The definition used is given below, where $live$ is the set of variables live at the end of the program:\footnote{This is used to specify where results are stored or link analyses for adjacent blocks of code}
 
 \begin{alltt}\small
 	\HOLthm[def]{three_addr.get_live_def}
 \end{alltt}
 
-This is an implementation of the liveness equation given in Section~\ref{sec:background}, which also allows for some variables to be live at the end of the program (which can be used to link together analyses for adjacent blocks of code, or specify which registers hold program results). Showing that this definition is correct is subtle: correctness with respect to register allocation is shown later by demonstrating that colourings satisfying constraints built up from this definition will not change code behaviour. However, another way of showing correctness is by proving that only the variables returned by \texttt{get_live} will affect the evaluation of a program, a property which is stated below:
+Showing that this definition is correct is subtle: correctness with respect to register allocation is shown later by demonstrating that colourings satisfying constraints built up from this definition will not change code behaviour. However, another way of showing correctness is by proving that only the variables returned by \texttt{get_live} will affect the evaluation of a program, a property which is stated below:
 
 \begin{alltt}\small
 	\HOLthm[rule]{three_addr.eval_get_live}
@@ -354,7 +353,7 @@ The antecedent states that the two stores $s$ and $t$ agree on the variables whi
 
 \subsection{Defining correctness of a colouring}
 
-In order to be able to prove that generated colourings are correct, and that correct colouring do not affect code behaviour, defining the concept of a `correct' colouring was essential. Fundamentally, a valid colouring is one which will not map two simultaneously live variables to the same target register. That is to say, for the set of variables live at any given instruction, mapping the colouring over them will not result in any duplicates. To facilitate this sort of definition, the property of being duplicate-free was defined as a function and a number of properties were proven of this. These are outlined in the next subsection.
+In order to be able to prove that generated colourings are correct, and that correct colourings do not affect code behaviour, defining the concept of a `correct' colouring was essential. Fundamentally, a valid colouring is one which will not map two simultaneously live variables to the same target register. That is to say, for the set of variables live at any given instruction, mapping the colouring over them will not result in any duplicates. To facilitate this sort of definition, the property of being duplicate-free was defined as a function and a number of properties were proven of this. These are outlined in the next subsection.
 
 \subsubsection{Duplicate-freeness and associated lemmas} \label{sec:duplicateFree}
 
@@ -688,7 +687,7 @@ To prove this, consider first the following lemma equating two evaluations of \t
 	\HOLthm{colouring.naive_colouring_aux_equality}
 \end{alltt}
 
-This is a clear consequence of the definition: assigned colours starting from $n+1$ are either equal to or one greater than those found by starting from $n$. They are equal in the case where the register is unused (and so is simply mapped to itself by the base case of the definition), and one greater in all other cases. This was shown by induction on the graph. From this we can prove that all assigned colours are greater than the starting value by induction, using the last lemma to link the result of the inductive hypothesis to the goal:
+This is a clear consequence of the definition: assigned colours starting from $n+1$ are either equal to or one greater than those found by starting from $n$.\footnote{They are equal in the case where the register is unused (and so is simply mapped to itself by the base case of the definition), and one greater in all other cases} From this we can prove that all assigned colours are greater than the starting value by induction:
 
 \begin{alltt}\small
 	\HOLthm{colouring.naive_colouring_colours_greater_than_n}
@@ -700,25 +699,13 @@ The original lemma is a simple consequence of this:
 	\HOLthm{colouring.naive_colouring_colours_all_new}
 \end{alltt}
 
-The second main lemma specifies that updating the mapped value of a function $f$ for a value not featured in $list$ means mapping the updated $f$ over $list$ is the same as mapping $f$ over $list$:
-
-\begin{alltt}\small
-	\HOLthm{colouring.function_irrelevant_update}
-\end{alltt}
-
-This was proved by inducting on the list and showing that the function's update couldn't affect any element. From this, a useful lemma for updating \texttt{naive\_colouring\_aux} was deduced, stating that colouring an unused vertex will not affect the result of applying the colouring:
+Another important lemma states that colouring an unused vertex will not affect the result of applying the colouring:
 
 \begin{alltt}\small
 	\HOLthm{colouring.colouring_map_with_unused_update}
 \end{alltt}
 
-The third lemma to be proved is as follows:
-
-\begin{alltt}\small
-	\HOLthm{colouring.map_doesnt_contain_unused_values}
-\end{alltt}
-
-This just states that if a function is never equal to $n$, $n$ will not feature in the result of mapping $f$ over a list. The proof is a simple induction using the definitions of \texttt{MEM} and \texttt{MAP}.
+This was a simple induction, showing that in any case the update has no effect.
 
 The final lemma claims that a satisfactory na\"{\i}ve colouring starting from $n+1$ will still be satisfactory after mapping a register to $n$, as $n$ will not have been used by any other register:
 
@@ -726,6 +713,7 @@ The final lemma claims that a satisfactory na\"{\i}ve colouring starting from $n
 	\HOLthm{colouring.naive_colouring_satisfactory_with_unused_value}
 \end{alltt}
 
+%%%TODO TODO TODO TODO cutting from here.
 The proof is fairly simple: $n$ is never used, as proved earlier, and intuitively using a colour which has never been used will not cause any clashes. Thus the update is guaranteed to be safe. However, the intuitive statement here was more difficult to prove. A full statement of it is given in the following lemma:
 
 \label{lemma:colouringSatisfactoryAfterUpdate}

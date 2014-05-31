@@ -1083,4 +1083,32 @@ spill_loads_stores 3 (to_spill_inst
 ``
 
 
+(* TODO this but better *)
+val end_to_end_correctness = store_thm("end_to_end_correctness",
+``
+!code s t c live f.
+(c = lowest_first_colouring (get_conflicts code live)) /\
+duplicate_free live /\
+no_dead_code code live /\
+(MAP s (get_live code live) = MAP (t o c) (get_live code live)) ==>
+(MAP (eval f s code) live = MAP (eval f t (apply c code) o c) live)
+``,
+REPEAT STRIP_TAC THEN
+`graph_reflects_conflicts (get_conflicts code live)`
+    by METIS_TAC [generated_graph_reflects_conflicts] THEN
+`graph_duplicate_free (get_conflicts code live)`
+    by METIS_TAC [generated_graph_duplicate_free] THEN
+`graph_edge_lists_well_formed (get_conflicts code live)`
+    by METIS_TAC [generated_graph_edge_lists_well_formed] THEN
+`colouring_satisfactory (lowest_first_colouring (get_conflicts code live))
+    (get_conflicts code live)`
+    by METIS_TAC [lowest_first_colouring_satisfactory] THEN
+`colouring_ok_alt (lowest_first_colouring (get_conflicts code live)) code live`
+    by METIS_TAC [satisfactory_colouring_is_ok] THEN
+`colouring_ok (lowest_first_colouring (get_conflicts code live)) code live`
+    by METIS_TAC [colouring_ok_def_equivalence] THEN
+FULL_SIMP_TAC bool_ss [] THEN
+METIS_TAC [colouring_ok_IMP_eval_apply])
+
+
 val _ = export_theory();
