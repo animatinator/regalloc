@@ -54,7 +54,7 @@ Register allocation is one of the most important stages in an optimising compile
 
 The objective of this project was to formally model a realistic register allocation algorithm in the HOL4 theorem prover, and verify that it does not change program behaviour. The approach used was to begin with a very simple graph colouring algorithm and incrementally improve it, adding extra heuristics and making the model more realistic, whilst maintaining a proof of overall correctness with respect to the semantics of code evaluation. Overall, the project was successful in its goals: a full end-to-end algorithm was verified, from source three-address code to output code with registers allocated, which includes a colouring algorithm and clash graph generator representative of those used in practice. It also models some more difficult aspects of register allocation, namely preference graphs and register spilling, and the algorithms handling these were fully verified as well.
 
-The next few chapters examine the background surrounding the problem of register allocation, and review some recent related work. Chapters \ref{sec:LVAClashGraphs} through \ref{sec:extensions} go on to describe in detail how the system was modelled and verified. In chapter \ref{sec:LVAClashGraphs}, a series of functions for performing live-variable analysis and generating the corresponding clash graphs is described, alongside descriptions of their correctness proofs. Chapter \ref{sec:colouring} goes on to explore the core of the algorithm: taking a clash graph and producing a colouring, through a combination of vertex order heuristics and colouring algorithms. The work of these chapters is brought together in Chapter \ref{sec:bringingTogether}, where the individual correctness proofs are used to build an overall proof of correctness with respect to code evaluation. Finally, Chapter \ref{sec:extensions} examines some of the extension work which was completed once the main algorithm had been verified.
+The next few chapters examine the background surrounding the problem of register allocation, and review some recent related work. Chapters \ref{sec:LVAClashGraphs} through \ref{sec:extensions} go on to describe in detail how the system was modelled and verified. In Chapter \ref{sec:LVAClashGraphs}, a series of functions for performing live-variable analysis and generating the corresponding clash graphs is described, alongside descriptions of their correctness proofs. Chapter \ref{sec:colouring} goes on to explore the core of the algorithm: taking a clash graph and producing a colouring, through a combination of vertex order heuristics and colouring algorithms. The work of these chapters is brought together in Chapter \ref{sec:bringingTogether}, where the individual correctness proofs are used to build an overall proof of correctness with respect to code evaluation. Finally, Chapter \ref{sec:extensions} examines some of the extension work which was completed once the main algorithm had been verified.
 
 \chapter{Background} \label{sec:background}
 
@@ -547,6 +547,7 @@ The proof uses the following simple lemma, proved by induction on the list:
 
 To complete the correctness proof, we now verify that generated clash graphs are complete in that any two registers in the same conflicting set will appear in each other's list of conflicts:
 
+\label{lemma:conflictingRegistersAppearInEachOthersConflicts}
 \begin{alltt}\small
 	\HOLthm{three_addr.conflicting_registers_appear_in_each_others_conflicts}
 \end{alltt}
@@ -572,7 +573,7 @@ The core verification task of this project is, of course, to prove the correctne
 
 \subsection{Defining correctness} \label{sec:colouringSatisfactory}
 
-Much as correctness of colouring was defined in terms of code with \texttt{colouring\_ok} and \texttt{colouring\_ok\_alt}, correctness with respect to a clash graph was defined through the function \texttt{colouring\_satisfactory}\footnote{The proof that this is equivalent follows in Chapter~\ref{sec:bringingTogether}}:
+Much as correctness of colouring was defined in terms of code with \texttt{colouring\_ok} and \texttt{colouring\_ok\_alt}, correctness with respect to a clash graph was defined through the function \texttt{colouring\_satisfactory}:\footnote{The proof that this is equivalent follows in Chapter~\ref{sec:bringingTogether}}
 
 \begin{alltt}\small
 	\HOLthm[def]{colouring.colouring_satisfactory_def}
@@ -1101,7 +1102,7 @@ To begin proving this, it was necessary to show that if a register appears in an
 	\HOLthm{three_addr.conflicts_come_from_shared_conflicting_set}
 \end{alltt}
 
-This follows from the fact that for something to belong to a list union it must belong to one of the original sets. The proof that \texttt{graph\_reflects\_conflicts} holds is then fairly simple once definitions are expanded: both vertices must originate from the same conflicting set, and by the property below (proved in Section~\ref{sec:clashGraphCorrectness}) they must therefore both appear in each other's list of conflicts.
+This follows from the fact that for something to belong to a list union it must belong to one of the original sets. The proof that \texttt{graph\_reflects\_conflicts} holds is then fairly simple once definitions are expanded: both vertices must originate from the same conflicting set, and by the property below (proved in Section~\ref{sec:clashGraphCorrectness} on page~\pageref{lemma:conflictingRegistersAppearInEachOthersConflicts}) they must therefore both appear in each other's list of conflicts.
 
 \begin{alltt}\small
 	\HOLthm{three_addr.conflicting_registers_appear_in_each_others_conflicts}
@@ -1119,6 +1120,7 @@ The next task in the proof was to show that \texttt{colouring\_satisfactory}, th
 
 This ended up being fairly complicated to prove. Initially, a slightly simpler goal was proved which would then be linked to the actual definitions to complete the original proof. The simpler goal is as follows:
 
+\label{lemma:respectingRegisterConflictsRespectsConflictingSets}
 \begin{alltt}\small
 	\HOLthm{three_addr.respecting_register_conflicts_respects_conflicting_sets}
 \end{alltt}
@@ -1153,7 +1155,7 @@ To verify this it was first necessary to show that a satisfactory colouring has 
 
 The proof is a relatively simple induction where the goal follows from the definition of \texttt{colouring\_satisfactory}. The goal \texttt{colouring\_satisfactory\_expansion} can now be verified by expanding out the definition of \texttt{colouring\_satisfactory} and showing that it means any $r$ must satisfy the goal of the statement.
 
-Thus we have verified that the antecedent of the overall goal implies the antecedent of \texttt{respecting\_register\_conflicts\_respects\_conflicing\_sets}. The full proof can now be derived using these lemmas, expanding the definition of \texttt{colouring\_ok\_alt} to make the goal match up to the consequent of \texttt{respecting\_register\_conflicts\_respects\_conflicting\_sets}.
+Thus we have verified that the antecedent of the overall goal implies the antecedent of the simplified lemma on page~\pageref{lemma:respectingRegisterConflictsRespectsConflictingSets}. The full proof can now be derived using these lemmas, expanding the definition of \texttt{colouring\_ok\_alt} to make the goal match up to the consequent of the simplified lemma.
 
 Therefore all colourings which satisfy colouring_satisfactory will also satisfy \texttt{colouring\_ok\_alt} and thus \texttt{colouring\_ok}. This gives a full end-to-end proof showing that the full register allocation algorithm generates a colouring which satisfies \texttt{colouring\_ok}. The remaining step in proving the project's overall goal is to show that a colouring satisfying \texttt{colouring\_ok} will not affect the behaviour of a block of code, and the proof of this is explained in the next section.
 
@@ -1170,7 +1172,7 @@ Now that the algorithm has been proven to generate colourings satisfying \texttt
 There are three main components to the antecedent:
 
 \begin{itemize}
-	\item The colouring $c$ satisfies \texttt{colouring\_ok}
+	\item The colouring $c$ satisfies \texttt{colouring\_ok}. As has been shown, this holds for any colouring generated by the algorithm
 	\item There is no dead code -- this will be discussed shortly, but essentially states that there aren't any instructions which modify non-live registers
 	\item The two stores $s$ and $t$ agree on the live variables. The second store $t$ is the store after register allocation, hence it is being composed with the colouring $c$ in the statement of store equality
 \end{itemize}
@@ -1570,7 +1572,7 @@ The algorithms implemented are clearly not very optimised. An interesting extens
 
 \section{Final words}
 
-This project has demonstrated the verification of a register allocator in a modular, extensible way. Although the resulting algorithm lacks several features of more advanced register allocators, it works effectively on the graphs tested and has proven behaviour. Chapter~\ref{sec:extensions} demonstrates how it can be extended in various ways without much extra work, and as discussed above the performance of critical functions could be improved relatively easily.
+This project has demonstrated the verification of a register allocator in a modular, extensible way. Although the resulting algorithm lacks some features of more advanced register allocators, it works effectively on the graphs tested and has proven behaviour. Chapter~\ref{sec:extensions} demonstrates how it can be extended in various ways without much extra work, and as discussed above the performance of critical functions could be improved relatively easily.
 
 In general, formal verification of software programs is not currently seen as necessary, or indeed particularly useful -- automated unit and integration testing is less time-consuming and can usually cover the majority of cases. However, for more critical applications such as compilers, the benefits of verification are clear: rare bugs which would be difficult to track down are eliminated, complex optimisations can be implemented without worrying about safety, and the correctness proof provides a precise contract describing the system's behaviour. While formal verification is not always worthwhile, it is certainly the way forward for critical pieces of code and is beginning to gain popularity in such applications.
 
