@@ -20,7 +20,7 @@
 \def\wordcount{12,000 approx.}
 
 
-\usepackage{epsfig,graphicx,parskip,setspace,tabularx,xspace,url,holtexbasic,alltt,proof}
+\usepackage{epsfig,graphicx,parskip,setspace,tabularx,xspace,url,holtexbasic,alltt,proof,epstopdf}
 
 %% START OF DOCUMENT
 \begin{document}
@@ -66,9 +66,7 @@ the code's behaviour is the same.
 
 There are many issues involved when doing this. The main problem is that code will often use far more `virtual' registers than actually exist on the target processor. The simplest solution to this is to store any values which won't fit in memory, but this considerably worsens performance. The solution is to find variables which are never in use at the same time and place them in the same register, allowing registers to be re-used when the values originally assigned to them are not in use.
 
-%TODO reference at the end of the second sentence below?
-This optimisation is enabled by liveness analysis. Essentially, a variable is live where changing its value will affect the program's future behaviour. Because this is difficult to decide with absolute precision, we generally compute a safe
-over-approximation of liveness: a variable is live if an instruction reachable from here reads its value, and its value is not written to in a preceding instruction. Liveness is computed by repeatedly iterating over instructions in the code from the end backwards, updating each instruction's set of live variables according the following liveness equation:
+This optimisation is enabled by liveness analysis. Essentially, a variable is live where changing its value will affect the program's future behaviour. Because this is difficult to decide with absolute precision, we generally compute a safe over-approximation of liveness: a variable is live if an instruction reachable from here reads its value, and its value is not written to in a preceding instruction. Liveness is computed by repeatedly iterating over instructions in the code from the end backwards, updating each instruction's set of live variables according the following liveness equation:
 
 \begin{center}
 $live(n) = \left(live(n+1) \setminus write(n)\right) \cup read(n)$
@@ -112,7 +110,7 @@ The $K$-colourability problem is known to be NP-complete wherever $K$ is greater
 
 The simplest way of colouring a graph is to take each vertex in turn and assign it a new colour until all vertices have been coloured. This approach is guaranteed to generate a valid colouring (as verified in Section~\ref{sec:naiveColouring}), but is also very inefficient as registers are never re-used for variables which could reside in the same register. In a system with few physical registers this will result in registers being spilled to memory, potentially causing frequent memory accesses and poor performance.
 
-An improvement is to take each vertex in turn and assign it the lowest register which isn't already in use by a vertex with which it clashes. This is fairly simple to implement, and significantly improves register utilisation as it re-uses old registers whenever the opportunity presents itself. %TODO ref?
+An improvement is to take each vertex in turn and assign it the lowest register which isn't already in use by a vertex with which it clashes. This is fairly simple to implement, and significantly improves register utilisation as it re-uses old registers whenever the opportunity presents itself.
 
 In practice the quality of the colouring is often also heavily dependent on the order in which we colour vertices. Decisions made at the beginning naturally constrain decisions made later, even if we allow the algorithm to swap existing colours. We therefore need to use a heuristic ordering step at the beginning to improve the order in which vertices are presented to the main colouring algorithm. Some such heuristics are described in the next section.
 
@@ -137,7 +135,7 @@ A recent example of a verifying register allocator is the one employed by the Co
 
 A more rigorous approach to proving correctness is given in Blazy, Robillard \& Appel \cite{compCertRegAllocProof}, where a fully verified OCaml implementation of the common Iterated Register Coalescing algorithm (George \cite{irc}) is demonstrated. The algorithm works by repeatedly simplifying the graph by removing vertices of degree less than $K$, the number of available registers,\footnote{As they have degree less than $K$, these registers can trivially be coloured once the rest of the graph has been $K$-coloured.} then combining vertices sharing a preference edge as long as their combined degree is less than $K$. This is a particularly strong example of a verified register allocator, and was ultimately implemented in CompCert. However, the proof appears fairly tightly coupled, making it difficult to modify to experiment with different heuristics or add features.
 
-The approach used in this project was to separate the sub-stages of allocation as cleanly as possible and build up towards an algorithm with similar performance to algorithms used in practice, arranging the proofs so that further improvements can be made and verified without much extra work. Although the algorithm verified is not quite as powerful as the IRC algorithm verified in \cite{compCertRegAllocProof}, it represents a full end-to-end system where individual components can be improved with relative ease. %TODO should that last one have the authors' names?
+The approach used in this project was to separate the sub-stages of allocation as cleanly as possible and build up towards an algorithm with similar performance to algorithms used in practice, arranging the proofs so that further improvements can be made and verified without much extra work. Although the algorithm verified is not quite as powerful as the IRC algorithm verified in \cite{compCertRegAllocProof}, it represents a full end-to-end system where individual components can be improved with relative ease.
 
 
 \chapter{Live variable analysis and clash graph generation} \label{sec:LVAClashGraphs}
@@ -1731,7 +1729,7 @@ The proof for the other argument is near-identical.
 
 \subsection{Heuristics for spilling}
 
-A number of heuristics can be used to make sure the registers being spilled have as minimal an impact on performance as possible. For instance, one could spill the register which conflicts with the most others (to ensure fewer registers have to be spilled). Another would be to try and find registers which contain values computed once at the start of their live range but not used until many instructions later, as these would be prime candidates for storing in memory.% Several other possible heuristics are discussed in (TODO ref).
+A number of heuristics can be used to make sure the registers being spilled have as minimal an impact on performance as possible. For instance, one could spill the register which conflicts with the most others (to ensure fewer registers have to be spilled). Another would be to try and find registers which contain values computed once at the start of their live range but not used until many instructions later, as these would be prime candidates for storing in memory. Several other possible heuristics are discussed in Bergner~\cite{bergnerSpilling}.
 
 For this project, a relatively common one was verified: spill the virtual register which has the fewest uses. To implement this, a function was written which counts the number of uses of each register and creates a mapping from registers to uses. This function is given below:
 
@@ -1817,7 +1815,7 @@ The first main issue is that the code datatype is very limiting: all instruction
 
 \subsection{Better colouring algorithms}
 
-The implemented colouring algorithms are good, but more intelligent colouring algorithms are available. For instance, the iterated register coalsecing algorithm described in George \cite{irc} would be a good candidate. Again, this wouldn't affect many other things, but would potentially require some re-structuring of the graph colouring proofs.
+The implemented colouring algorithms are good, but more intelligent colouring algorithms are available. For instance, the iterated register coalescing algorithm described in George \cite{irc} would be a good candidate. Again, this wouldn't affect many other things, but would potentially require some re-structuring of the graph colouring proofs.
 
 \subsection{More thorough treatment of register spilling}
 
@@ -1829,9 +1827,11 @@ Furthermore, Patterson \cite{graphColouringWebsite} mentions some better approac
 
 The algorithms implemented are clearly not very optimised. An interesting extension to the project would be re-implementing some of the key functions in more efficient ways, and verifying that they implement the same behaviour as the original unoptimised versions. As mentioned, the modular nature of the proofs means this wouldn't be particularly hard, and the resulting system would be more practically useful.
 
-%\section{Final words}
+\section{Final words}
 
-%TODO
+This project has demonstrated the verification of a register allocator in a modular, extensible way. Although the resulting algorithm lacks several features of more advanced register allocators, it works effectively on the graphs tested and has proven behaviour. Chapter~\ref{sec:extensions} demonstrates how it can be extended in various ways without much extra work, and as discussed above the performance of critical functions could be improved relatively easily.
+
+In general, formal verification of software programs is not currently seen as necessary, or indeed particularly useful -- automated unit and integration testing is less time-consuming and can usually cover the majority of cases. However, for more critical applications such as compilers, the benefits of verification are clear: rare bugs which would be difficult to track down are eliminated, complex optimisations can be implemented without worrying about safety, and the correctness proof provides a precise contract describing the system's behaviour. While formal verification is not always worthwhile, it is certainly the way forward for critical pieces of code and is beginning to gain popularity in such applications.
 
 
 \appendix
