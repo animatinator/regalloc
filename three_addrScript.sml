@@ -751,6 +751,30 @@ REPEAT STRIP_TAC THEN
 Q.ASM_CASES_TAC `MEM n (get_live (remove_dead_code code live) live)` THEN
 FULL_SIMP_TAC bool_ss [no_dead_code_def])
 
+val remove_dead_code_preserves_behaviour = store_thm(
+    "remove_dead_code_preserves_behaviour",
+``
+! code s live f .
+MAP (eval f s code) live = MAP (eval f s (remove_dead_code code live)) live
+``,
+Induct_on `code` THEN1 (EVAL_TAC THEN DECIDE_TAC) THEN
+REPEAT STRIP_TAC THEN
+Cases_on `h` THEN
+EVAL_TAC THEN
+Cases_on `MEM n (get_live (remove_dead_code code live) live)` THEN1 (
+    FULL_SIMP_TAC bool_ss [] THEN
+    EVAL_TAC) THEN
+FULL_SIMP_TAC bool_ss [] THEN
+`MAP ((n =+ f (s n0) (s n1)) s) (get_live (remove_dead_code code live) live)
+= MAP s (get_live (remove_dead_code code live) live)` by ALL_TAC THEN1 (
+    FULL_SIMP_TAC bool_ss [MAP_EQ_f] THEN
+    REPEAT STRIP_TAC THEN
+    Cases_on `e = n` THEN1 (FULL_SIMP_TAC bool_ss []) THEN
+    EVAL_TAC THEN
+    FULL_SIMP_TAC bool_ss []) THEN
+IMP_RES_TAC eval_get_live THEN
+METIS_TAC [])
+
 
 (* no_dead_code is preserved by removing the first instruction *)
 val no_dead_code_preserved = store_thm("no_dead_code_preserved",

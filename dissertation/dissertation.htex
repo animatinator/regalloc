@@ -80,7 +80,6 @@ This is repeated until the live variable sets stop changing. With this informati
 
 When no allocation can satisfy these clashes between variables, it becomes necessary to spill variables to memory. This means reading or writing said variables takes considerably longer, and so an effective register allocation algorithm should minimise spills wherever possible.
 
-%TODO: [Find a reference or two for this next bit?]
 Another thing to consider is that some target architectures have constraints on what registers can be used for. For instance, a particular operator may require its operands to be stored in particular registers, or may place the output in a designated `result' register. This means move instructions will be required to satisfy these requirements, slowing the overall program down. Good register allocators allow for this by biasing allocation so that these move instructions can be eliminated wherever possible.
 
 \section{Isomorphism to graph colouring}
@@ -130,7 +129,7 @@ This is not an exhaustive list of the heuristics used in practice, but these two
 
 \chapter{Related Work} 
 
-Although some considerable work has gone into the formal verification of programs, and more recently into the compilers themselves, the problem register allocation has not been explored in quite as much depth. However, there are nonetheless several related publications which attempt to formally verify register allocators (and, more generally, graph-colouring algorithms) in various different ways. In this section, a number of these approaches are described and compared, so as to give a background to the work undertaken for this project.
+Although some considerable work has gone into the formal verification of programs, and more recently into the compilers themselves, the problem of register allocation has not been explored in quite as much depth. However, there are nonetheless several related publications which attempt to formally verify register allocators (and, more generally, graph-colouring algorithms) in various different ways. In this section, a number of these approaches are described and compared, so as to give a background to the work undertaken for this project.
 
 There have been several recent approaches to formalising graph theory in a proof system like HOL. A notable example is Noschinski \cite{isabelleGraphs}, in which a full library of graph theory primitives is developed for the Isabelle proof system. More relevantly, Bauer \& Nipkow \cite{5colourTheorem} specifically discusses formalising graph colouring in Isabelle/HOL as it tackles the problem of verifying the five colour theorem. However, neither of these was found to be general enough to build upon for this project -- ultimately, a pair of customised graph representations was used, both of which were designed to best fit their specific applications.
 
@@ -179,9 +178,11 @@ With the basic code type defined, it was then necessary to model a register allo
 
 Applying a colouring is then very simple: the function iterates through instructions, applying the colouring function to each register as it goes. The definition is given below:
 
+\begin{samepage}
 \begin{alltt}\small
 	\HOLthm[def]{three_addr.apply_def}
 \end{alltt}
+\end{samepage}
 
 For example, a sample colouring function for the graph in Chapter~\ref{sec:background} is given below:
 
@@ -208,12 +209,14 @@ Thus the graph resulting from applying this colouring is as shown in Figure~\ref
 
 The resulting code, which now uses only four registers, is given below:
 
+\begin{samepage}
 \begin{alltt}
 R1 = R3 + R2
 R0 = R1 * R3
 R2 = R2 - R0
 R0 = R1 + R2
 \end{alltt}
+\end{samepage}
 
 This completes the definition of the basic primitives used to represent code in the proofs.
 
@@ -315,7 +318,7 @@ As mentioned earlier, the decision to represent a block of code as a simple list
 Showing that this definition is correct is subtle: correctness with respect to register allocation is shown later by demonstrating that colourings satisfying constraints built up from this definition will not change code behaviour. However, another way of showing correctness is by proving that only the variables returned by \texttt{get_live} will affect the evaluation of a program, a property which is stated below:
 
 \begin{alltt}\small
-	\HOLthm[rule]{three_addr.eval_get_live}
+	\HOLthm{three_addr.eval_get_live}
 \end{alltt}
 
 The antecedent states that the two stores $s$ and $t$ agree on the variables which are live at the start of the code. The consequent then claims that the stores at the end of the program's evaluation will agree on whatever variables are designated as live at the end. The proof of this statement is by induction on the size of the code, expanding all terms and rewriting using the lemmas about insertion and deletion proved earlier along with many of the standard HOL list axioms.
@@ -367,13 +370,13 @@ This was shown by induction, using the fact that unions rely on insertion which 
 This was then extended to general unions. The proof works by induction, using the above lemma and expanding definitions.
 
 \begin{alltt}\small
-	\HOLthm[rule]{three_addr.list_union_flatten_duplicate_free}
+	\HOLthm{three_addr.list_union_flatten_duplicate_free}
 \end{alltt}
 
 The next objective was to show that the set of registers returned by \texttt{get\_live} contains no duplicates, assuming there are no duplicates in the set of registers considered to be live at the end of the code. This was a fairly simple proof by induction, using the lemmas about duplicate-freeness of insertion and deletion and the definition of \texttt{get\_live}:
 
 \begin{alltt}\small
-	\HOLthm[rule]{three_addr.get_live_has_no_duplicates}
+	\HOLthm{three_addr.get_live_has_no_duplicates}
 \end{alltt}
 
 Finally, the following useful property was proved, stating that if the result of mapping a function over a list is duplicate-free and two elements of the original list are not equal then the function maps them to different things:
@@ -678,9 +681,11 @@ This was a simple induction, showing that in any case the update has no effect.
 
 The final lemma claims that a satisfactory na\"{\i}ve colouring starting from $n+1$ will still be satisfactory after mapping a register to $n$, as $n$ will not have been used by any other register:
 
+\begin{samepage}
 \begin{alltt}\small
 	\HOLthm{colouring.naive_colouring_satisfactory_with_unused_value}
 \end{alltt}
+\end{samepage}
 
 The proof is fairly simple: $n$ is never used, as proved earlier, and intuitively using a colour which has never been used will not cause any clashes. Thus the update is guaranteed to be safe. However, the intuitive statement here was more difficult to prove. A full statement of it is given in the following lemma:
 
@@ -693,11 +698,13 @@ The proof depends on three sub-lemmas:
 
 \begin{description}
 	\item[Outputs cannot exist without being mapped to] \hfill \\
+	This statement is slightly complex, but essentially says that if a value is not in the result of mapping a function over a list and it is not equal to $n$, then it will still not be in the result if we update the function to map something to $n$:
+	
 	\begin{alltt}\small
 		\HOLthm{colouring.output_cannot_exist_without_being_mapped_to}
 	\end{alltt}
 
-	This statement is slightly complex, but essentially says that if a value is not in the result of mapping a function over a list and it is not equal to $n$, then it will still not be in the result if we update the function to map something to $n$. The proof depends on the following lemma:
+	The proof depends on the following lemma:
 
 	\begin{alltt}\small
 		\HOLthm{colouring.input_unaffected_by_unrelated_update}
@@ -706,19 +713,21 @@ The proof depends on three sub-lemmas:
 	This can be shown by case splitting on $h = q$ and simplifying. The proof of the original statement now follows using this lemma by induction on the list.
 
 	\item[Map output only contains values mapped from inputs] \hfill \\
+	Simply put, if only one value $x$ maps to a particular output value $n$, mapping the function over a list which does not contain $x$ will give a list not containing $n$:
+	
 	\begin{alltt}\small
 		\HOLthm{colouring.map_output_only_contains_values_mapped_from_inputs}
 	\end{alltt}
 
-	Simply put, if only one value $x$ maps to a particular output value $n$, mapping the function over a list which does not contain $x$ will give a list not containing $n$. The proof is by induction, and is trivial using the induction hypothesis and expanding the definitions of \texttt{MEM} and \texttt{MAP}.
+	The proof is by induction, and is trivial using the induction hypothesis and expanding the definitions of \texttt{MEM} and \texttt{MAP}.
 
 
 	\item[Applying an update only changes the updated value] \hfill \\
+	If a function is never equal to $n$, updating it so one value is mapped to $n$ does not affect any other inputs. The proof is trivial by case splitting on $x = w$ in the conclusion.
+	
 	\begin{alltt}\small
 		\HOLthm{colouring.apply_update_only_changes_updated_value}
 	\end{alltt}
-	
-	That is, if a function is never equal to $n$, updating it so one value is mapped to $n$ does not affect any other inputs. The proof is trivial by case splitting on $x = w$ in the conclusion.
 \end{description}
 
 These three sub-lemmas are sufficient to prove the lemma on page \pageref{lemma:colouringSatisfactoryAfterUpdate}. We induct on the graph, and do a case split on whether the current vertex is equal to the one being updated. If it is, we use the fact that the new colour will not have been used before and the current vertex is not in its conflicts list to show that it is satisfactory on the current vertex, and the inductive hypothesis to prove the remainder of the goal. If it is not, we use the fact that the current vertex does not belong to its list of conflicts to show that its colour cannot conflict with anything in the set, and we again use the inductive hypothesis to prove the rest.
@@ -905,11 +914,13 @@ A convenient approach to heuristics, inspired by Kosowski \& Manuszewski \cite{c
 
 The simplest kind of heuristic is one which simply sorts elements based on some property -- for instance, a highest-degree-first ordering. This was modelled as a sort with a function passed in which computes the value of this property. The relevant definitions are as follows:
 
+\begin{samepage}
 \begin{alltt}\small
 	\HOLthm[def]{colouring.heuristic_insert_def}
 	
 	\HOLthm[def]{colouring.heuristic_sort_def}
 \end{alltt}
+\end{samepage}
 
 These implement a simple insertion sort, where \texttt{heuristic\_insert} performs the insertion and \texttt{heuristic\_sort} inserts each element into the list one by one.
 
@@ -1227,15 +1238,15 @@ The proof of correctness was relatively easy, using induction and case splitting
 The correctness proof depends on a number of lemmas. Firstly, the proof was by induction and so making use of the inductive hypothesis required a pair of proofs showing that \texttt{colouring\_ok} and \texttt{no\_dead\_code} are preserved when the first instruction is removed. The proofs of these statements were trivial by expanding definitions:
 
 \begin{alltt}\small
-	\HOLthm[rule]{three_addr.colouring_ok_preserved}
+	\HOLthm{three_addr.colouring_ok_preserved}
 	
-	\HOLthm[rule]{three_addr.no_dead_code_preserved}
+	\HOLthm{three_addr.no_dead_code_preserved}
 \end{alltt}
 
 Another small yet useful lemma is the following, stating that \texttt{colouring\_ok} means applying the colouring to the current set of live variables yields a duplicate-free result:
 
 \begin{alltt}\small
-	\HOLthm[rule]{three_addr.colouring_ok_IMP}
+	\HOLthm{three_addr.colouring_ok_IMP}
 \end{alltt}
 
 This was proved by case splitting on the code variable then evaluating and simplifying the result to prove the goal.
@@ -1267,6 +1278,7 @@ It is now possible to complete the proof of the original statement of correctnes
 The proof is by induction on the block of code, and uses all the lemmas above along with various definition expansions and some of the HOL lemmas regarding \texttt{MAP} and \texttt{MEM}. With this proved, it follows that the full register allocation algorithm is correct in that it doesn't affect code behaviour with respect to evaluation.
 
 
+%TODO TODO continue fixing page breaks from here
 \chapter{Extension features} \label{sec:extensions}
 
 \section*{Introduction}
@@ -1574,7 +1586,7 @@ The implemented colouring algorithms are good, but more intelligent colouring al
 
 \subsection{More thorough treatment of register spilling}
 
-While fairly successful, the extension work on finite registers and spilling is somewhat simplistic at the moment. For instance, in a real compiler one wouldn't allocate three registers for temporary variables loaded from memory as this would be wasteful. Instead, the new temporaries are generally added into the original set of registers and register allocation is performed again on the new code with loads and stores.
+While fairly successful, the extension work on finite registers and spilling is somewhat simplistic at the moment. For instance, in a real compiler one wouldn't allocate three registers for temporary variables loaded from memory as this would be wasteful. Instead, the new temporaries are generally added into the original set of registers and register allocation is performed again on the new code with loads and stores, as described in Chaitin \cite{chaitinSpilling}.
 
 Furthermore, Patterson \cite{graphColouringWebsite} mentions some better approaches to spilling, such as breaking up live ranges, and it would likely be useful to implement and verify some of these as well.
 
