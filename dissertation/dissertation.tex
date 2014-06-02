@@ -771,44 +771,7 @@ The proof is fairly simple: $n$ is never used, as proved earlier, and intuitivel
    \HOLConst{colouring_satisfactory} ((\HOLFreeVar{q} =+ \HOLFreeVar{n}) \HOLFreeVar{c}) \HOLFreeVar{cs}
 \end{alltt}
 
-The proof depends on three sub-lemmas:
-
-\begin{description}
-	\item[Outputs cannot exist without being mapped to] \hfill \\
-	This statement is slightly complex, but essentially says that if a value is not in the result of mapping a function over a list and it is not equal to $n$, then it will still not be in the result if we update the function to map something to $n$:
-	
-	\begin{alltt}\small
-		\HOLTokenTurnstile{} \HOLFreeVar{f} \HOLFreeVar{x} \HOLTokenNotIn{} \HOLConst{set} (\HOLConst{MAP} \HOLFreeVar{f} \HOLFreeVar{list}) \HOLTokenConj{} \HOLFreeVar{f} \HOLFreeVar{x} \HOLTokenNotEqual{} \HOLFreeVar{n} \HOLTokenImp{}
-   \HOLFreeVar{f} \HOLFreeVar{x} \HOLTokenNotIn{} \HOLConst{set} (\HOLConst{MAP} ((\HOLFreeVar{q} =+ \HOLFreeVar{n}) \HOLFreeVar{f}) \HOLFreeVar{list})
-	\end{alltt}
-
-	The proof depends on the following lemma:
-
-	\begin{alltt}\small
-		\HOLTokenTurnstile{} (\HOLFreeVar{q} =+ \HOLFreeVar{n}) \HOLFreeVar{f} \HOLFreeVar{h} \HOLTokenNotEqual{} \HOLFreeVar{f} \HOLFreeVar{h} \HOLTokenImp{} (\HOLFreeVar{h} = \HOLFreeVar{q})
-	\end{alltt}
-
-	This can be shown by case splitting on $h = q$ and simplifying. The proof of the original statement now follows using this lemma by induction on the list.
-
-	\item[Map output only contains values mapped from inputs] \hfill \\
-	Simply put, if only one value $x$ maps to a particular output value $n$, mapping the function over a list which does not contain $x$ will give a list not containing $n$:
-	
-	\begin{alltt}\small
-		\HOLTokenTurnstile{} \HOLFreeVar{x} \HOLTokenNotIn{} \HOLConst{set} \HOLFreeVar{list} \HOLTokenConj{} (\HOLTokenForall{}\HOLBoundVar{y}. \HOLBoundVar{y} \HOLTokenNotEqual{} \HOLFreeVar{x} \HOLTokenImp{} \HOLFreeVar{f} \HOLBoundVar{y} \HOLTokenNotEqual{} \HOLFreeVar{n}) \HOLTokenImp{} \HOLFreeVar{n} \HOLTokenNotIn{} \HOLConst{set} (\HOLConst{MAP} \HOLFreeVar{f} \HOLFreeVar{list})
-	\end{alltt}
-
-	The proof is by induction, and is trivial using the induction hypothesis and expanding the definitions of \texttt{MEM} and \texttt{MAP}.
-
-
-	\item[Applying an update only changes the updated value] \hfill \\
-	If a function is never equal to $n$, updating it so one value is mapped to $n$ does not affect any other inputs. The proof is trivial by case splitting on $x = w$ in the conclusion.
-	
-	\begin{alltt}\small
-		\HOLTokenTurnstile{} (\HOLTokenForall{}\HOLBoundVar{x}. \HOLFreeVar{f} \HOLBoundVar{x} \HOLTokenNotEqual{} \HOLFreeVar{n}) \HOLTokenImp{} \HOLTokenForall{}\HOLBoundVar{x}. \HOLBoundVar{x} \HOLTokenNotEqual{} \HOLFreeVar{w} \HOLTokenImp{} (\HOLFreeVar{w} =+ \HOLFreeVar{n}) \HOLFreeVar{f} \HOLBoundVar{x} \HOLTokenNotEqual{} \HOLFreeVar{n}
-	\end{alltt}
-\end{description}
-
-These three sub-lemmas are sufficient to prove the lemma on page \pageref{lemma:colouringSatisfactoryAfterUpdate}. We induct on the graph, and do a case split on whether the current vertex is equal to the one being updated. If it is, we use the fact that the new colour will not have been used before and the current vertex is not in its conflicts list to show that it is satisfactory on the current vertex, and the inductive hypothesis to prove the remainder of the goal. If it is not, we use the fact that the current vertex does not belong to its list of conflicts to show that its colour cannot conflict with anything in the set, and we again use the inductive hypothesis to prove the rest.
+To prove this, we induct on the graph, and do a case split on whether the current vertex is equal to the one being updated. If it is, we use the fact that the new colour will not have been used before and the current vertex is not in its own conflicts list to show that it is satisfactory on the current vertex, and the inductive hypothesis to prove the remainder of the goal. If it is not, we use the fact that the current vertex does not belong to its list of conflicts to show that its colour cannot conflict with anything in the set, and we again use the inductive hypothesis to prove the rest.
 
 It is now possible to prove the original statement of \texttt{naive\_colouring\_aux} being satisfactory:
 
@@ -1122,6 +1085,7 @@ This uses the HOL \texttt{QSORT} algorithm, passing in a predicate which states 
 
 The main algorithm uses an auxiliary function which iterates through a list (assumed to be sorted by the above algorithm), putting the top element on the front of an accumulator ($cs'$), sorting the tail and calling itself recursively with the sorted tail and updated set of already-considered vertices ($done$):
 
+\begin{samepage}
 \begin{alltt}\small
 	\HOLConst{smallest_last_heuristic_aux} \HOLFreeVar{done} [] \HOLFreeVar{cs\sp{\prime}} = \HOLConst{REVERSE} \HOLFreeVar{cs\sp{\prime}}
 \HOLConst{smallest_last_heuristic_aux} \HOLFreeVar{done} ((\HOLFreeVar{r},\HOLFreeVar{rs})::\HOLFreeVar{cs}) \HOLFreeVar{cs\sp{\prime}} =
@@ -1130,6 +1094,7 @@ The main algorithm uses an auxiliary function which iterates through a list (ass
    \HOLConst{smallest_last_heuristic_aux} (\HOLFreeVar{r} INSERT \HOLFreeVar{done}) \HOLBoundVar{sorted}
      ((\HOLFreeVar{r},\HOLFreeVar{rs})::\HOLFreeVar{cs\sp{\prime}}))
 \end{alltt}
+\end{samepage}
 
 Due to the fact that the vertex list is sorted each time, termination of this function is non-trivial. The proof follows from the fact that each iteration shortens the length of the vertex list, as sorting maintains the length of its input. The custom induction rule generated for this function is as follows:
 
