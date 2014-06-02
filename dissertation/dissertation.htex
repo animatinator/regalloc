@@ -1233,6 +1233,12 @@ The proof of correctness was relatively easy, using induction and case splitting
 	\HOLthm{three_addr.remove_dead_code_works}
 \end{alltt}
 
+It was also possible to prove that the function preserves code behaviour by induction. This uses the fact that evaluating code with two stores agreeing on its live variables gives the same results, and that removed instructions will not have updated live variables:
+
+\begin{alltt}\small
+	\HOLthm{three_addr.remove_dead_code_preserves_behaviour}
+\end{alltt}
+
 \subsection{Lemmas}
 
 The correctness proof depends on a number of lemmas. Firstly, the proof was by induction and so making use of the inductive hypothesis required a pair of proofs showing that \texttt{colouring\_ok} and \texttt{no\_dead\_code} are preserved when the first instruction is removed. The proofs of these statements were trivial by expanding definitions:
@@ -1278,7 +1284,7 @@ It is now possible to complete the proof of the original statement of correctnes
 The proof is by induction on the block of code, and uses all the lemmas above along with various definition expansions and some of the HOL lemmas regarding \texttt{MAP} and \texttt{MEM}. With this proved, it follows that the full register allocation algorithm is correct in that it doesn't affect code behaviour with respect to evaluation.
 
 
-%TODO TODO continue fixing page breaks from here
+
 \chapter{Extension features} \label{sec:extensions}
 
 \section*{Introduction}
@@ -1351,9 +1357,11 @@ To take these preferences into account, an alternative colouring function was im
 
 This uses the auxiliary function \texttt{best\_preference\_colour}:
 
+\begin{samepage}
 \begin{alltt}\small
 	\HOLthm[def]{colouring.best_preference_colour_def}
 \end{alltt}
+\end{samepage}
 
 The \texttt{best\_preference\_colour} function iterates through preferences until it finds one which can be satisfied, returning zero if none can be satisfied. The main function takes the result of this for the current vertex and sees whether it conflicts -- if it does, normal lowest-first colouring is used; if it does not, the preference colour is used.
 
@@ -1371,9 +1379,11 @@ This proof was very similar to the proof of lowest-first colouring's correctness
 
 With a preference-driven colouring obtained, the next step is to remove any `move' instructions which have become redundant after colouring. A function to handle this was implemented:
 
+\begin{samepage}
 \begin{alltt}\small
 	\HOLthm[def]{three_addr.remove_identity_moves_def}
 \end{alltt}
+\end{samepage}
 
 This leaves the code unchanged unless it finds a `move' instruction with equal source and destination registers, in which case it drops the instruction. It was necessary to prove that this doesn't affect evaluation behaviour of the code:
 
