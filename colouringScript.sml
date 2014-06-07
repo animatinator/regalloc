@@ -1022,9 +1022,6 @@ Cases_on `(MEM
      FULL_SIMP_TAC bool_ss [] THEN
      METIS_TAC [new_colour_satisfactory_if_constraints_satisfied]) THEN
 FULL_SIMP_TAC bool_ss [] THEN
-(* TODO: This next thing is very similar to the thing proved earlier and also in
-the proof of lowest_first correctness - see if it can be extracted to a
-lemma? *)
 TACTICAL.REVERSE (`~(MEM
 (best_preference_colour
 	(lowest_first_preference_colouring cs prefs) r (prefs q))
@@ -1083,7 +1080,6 @@ spill_loads_stores 3 (to_spill_inst
 ``
 
 
-(* TODO this but better *)
 val end_to_end_correctness = store_thm("end_to_end_correctness",
 ``
 !code s t c live f.

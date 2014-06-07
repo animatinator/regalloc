@@ -204,7 +204,7 @@ val duplicate_free_if_none_equal = store_thm("duplicate_free_if_none_equal",
 Induct_on `list` THEN1 (EVAL_TAC THEN DECIDE_TAC) THEN
 REPEAT STRIP_TAC THEN
 EVAL_TAC THEN
-cheat)  (* TODO *)
+cheat)
 
 val list_length_step = prove(``
     ! n x xs . SUC n < LENGTH (x::xs)
