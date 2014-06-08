@@ -23,9 +23,10 @@
 \framesubtitle{The problem of register allocation}
 
 \begin{itemize}
-	\item Intermediate code assumes infinite registers
-	\item Real machines have finite registers
+	\item Intermediate code assumes infinite registers, whilst real machines have finite registers
 	\item Using memory costs many cycles
+	\item When two variables are never used at the same time they can be stored in the same register
+	\item Minimising register usage allows more data to be stored in registers
 \end{itemize}
 \end{frame}
 
