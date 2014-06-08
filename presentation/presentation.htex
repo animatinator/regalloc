@@ -19,7 +19,8 @@
 \section{Introduction}
 
 \begin{frame}
-\frametitle{The problem of register allocation}
+\frametitle{Introduction}
+\framesubtitle{The problem of register allocation}
 
 \begin{itemize}
 	\item Intermediate code assumes infinite registers
@@ -29,20 +30,69 @@
 \end{frame}
 
 \subsection{Register allocation by graph colouring}
-\begin{frame}
-\frametitle{Computing live ranges}
+\begin{frame}[containsverbatim]
+\frametitle{Register allocation by graph colouring}
+\framesubtitle{Computing live ranges}
+\begin{center}
+\begin{alltt}
+R1 = R2 + R3  \textcolor{red}{\(\{R_2, R_3\}\)}
+R4 = R1 * R2  \textcolor{red}{\(\{R_1, R_2, R_3\}\)}
+R5 = R3 - R4  \textcolor{red}{\(\{R_1, R_3, R_4\}\)}
+R6 = R1 + R5  \textcolor{red}{\(\{R_1, R_5\}\)}
+\end{alltt}
+\end{center}
 \end{frame}
 
-\begin{frame}
+\begin{frame}[containsverbatim]
 \frametitle{Building a clash graph}
+\begin{columns}[c]
+\column{.5\textwidth}
+\begin{alltt}
+R1 = R2 + R3  \(\{R_2, R_3\}\)
+R4 = R1 * R2  \(\{R_1, R_2, R_3\}\)
+R5 = R3 - R4  \(\{R_1, R_3, R_4\}\)
+R6 = R1 + R5  \(\{R_1, R_5\}\)
+\end{alltt}
+\column{.5\textwidth}
+\begin{figure}[!ht]
+  \centering
+  \includegraphics[width=0.8\textwidth]{graph.pdf}
+\end{figure}
+\end{columns}
 \end{frame}
 
 \begin{frame}
 \frametitle{Colouring the clash graph}
+\begin{columns}[c]
+\column{.5\textwidth}
+\begin{figure}[!ht]
+  \centering
+  \includegraphics[width=0.8\textwidth]{graph.pdf}
+\end{figure}
+\column{.5\textwidth}
+\begin{figure}[!ht]
+  \centering
+  \includegraphics[width=0.8\textwidth]{colouredGraph.pdf}
+\end{figure}
+\end{columns}
 \end{frame}
 
-\begin{frame}
+\begin{frame}[containsverbatim]
 \frametitle{Applying the colouring}
+\begin{columns}[c]
+\column{.5\textwidth}
+\begin{figure}[!ht]
+  \centering
+  \includegraphics[width=0.8\textwidth]{colouredGraph.pdf}
+\end{figure}
+\column{.5\textwidth}
+\begin{alltt}
+\textcolor{green}{R1} = \textcolor{blue}{R2} + \textcolor{red}{R3}
+\textcolor{cyan}{R4} = \textcolor{green}{R1} * \textcolor{blue}{R2}
+\textcolor{red}{R3} = \textcolor{red}{R3} - \textcolor{cyan}{R4}
+\textcolor{cyan}{R4} = \textcolor{green}{R1} + \textcolor{red}{R3}
+\end{alltt}
+\end{columns}
 \end{frame}
 
 \begin{frame}
@@ -112,7 +162,7 @@ Colourings can be applied simply by substituting registers:
 \frametitle{Set representation}
 To simplify definitions and proofs, sets are represented as duplicate-free lists and all functions manipulating them are proven to preserve duplicate-freeness
 
-Simple set functions:
+Many simple set functions were implemented preserving this representation, for example:
 
 \begin{alltt}\small
 	\HOLthm[def]{three_addr.insert_def}
@@ -121,21 +171,14 @@ Simple set functions:
 \begin{alltt}\small
 	\HOLthm[def]{three_addr.delete_def}
 \end{alltt}
-
-\begin{alltt}\small
-	\HOLthm[def]{three_addr.list_union_def}
-\end{alltt}
-
-\begin{alltt}\small
-	\HOLthm[def]{three_addr.list_union_flatten_def}
-\end{alltt}
 \end{frame}
 
 \section{The algorithm}
 \subsection{Live variable analysis}
 
 \begin{frame}[containsverbatim]
-\frametitle{Live variable analysis}
+\frametitle{The algorithm}
+\framesubtitle{Live variable analysis}
 The set of live variables before a block of code is given by the following equation:
 
 \begin{center}
@@ -162,7 +205,8 @@ More directly, it was proved that only registers returned by \texttt{get\_live} 
 
 \subsection{Clash graph generation}
 \begin{frame}
-\frametitle{Clash graph representation}
+\frametitle{Clash graph generation}
+\framesubtitle{Clash graph representation}
 Graphs are represented as lists of (vertex, clash list) pairs, for example:
 
 $[ (r_1, [c_1, \ldots, c_n]), \ldots, (r_n, [c_1, \ldots, c_n]) ]$
@@ -189,33 +233,38 @@ This function is then used to build a graph in the specified format:
 
 \begin{frame}[containsverbatim]
 \frametitle{Correctness of generated clash graphs}
-Verification of the clash graph generation stage consisted of three main proofs
+Verification of the clash graph generation stage consisted of three main proofs:
 
-The first of these states that registers never conflict with themselves, and follows easily from the definition of \texttt{conflicts\_for\_register}:
+\begin{itemize}
+	\item Registers never conflict with themselves (follows easily from the definition of \texttt{conflicts\_for\_register})
 
-\begin{alltt}\small
-	\HOLthm{three_addr.register_does_not_conflict_with_self}
-\end{alltt}
+	\begin{alltt}\small
+		\HOLthm{three_addr.register_does_not_conflict_with_self}
+	\end{alltt}
 
-The second states that the graph is complete -- any registers from the same conflicting set appear in each other's conflicts:
+	\item The graph is complete: any registers from the same conflicting set appear in each other's conflicts
 
-\begin{alltt}\small
-	\HOLthm{three_addr.conflicting_registers_appear_in_each_others_conflicts}
-\end{alltt}
+	\begin{alltt}\small
+		\HOLthm{three_addr.conflicting_registers_appear_in_each_others_conflicts}
+	\end{alltt}
+\end{itemize}
 \end{frame}
 
 \begin{frame}[containsverbatim]
-Finally, it was shown that the graph doesn't contain any false conflicts -- every conflict is the result of two registers appearing in a conflicting set together:
+\begin{itemize}
+	\item The graph doesn't contain any false conflicts: every conflict is the result of two registers appearing in a conflicting set together
 
-\begin{alltt}\small
-	\HOLthm{three_addr.conflicts_come_from_shared_conflicting_set}
-\end{alltt}
+	\begin{alltt}\small
+		\HOLthm{three_addr.conflicts_come_from_shared_conflicting_set}
+	\end{alltt}
+\end{itemize}
 \end{frame}
 
 \subsection{Colouring algorithms}
 
 \begin{frame}[containsverbatim]
-\frametitle{Defining correctness}
+\frametitle{Colouring algorithms}
+\framesubtitle{Defining correctness}
 A graph colouring is correct if no vertex has the same colour as any of its neighbours. This is captured in the definition below:
 
 \begin{alltt}\small
@@ -231,22 +280,21 @@ This was shown to imply the earlier definition of colouring correctness:
 Thus proving that a colouring satisfies \texttt{colouring\_satisfactory} is sufficient to show that it preserves program behaviour
 \end{frame}
 
-%TODO necessary?
 \begin{frame}[containsverbatim]
 \frametitle{Requirements on clash graphs}
-For verification to work, it was necessary to show that graphs passed satisfied several properties:
+For verification to work, it was necessary to show that generated graphs satisfy several properties:
 
 \begin{itemize}
 	\item Edge lists must contain no duplicates and vertices must not clash with themselves:
 	
 	\begin{alltt}\small
-		\HOLthm{colouring.generated_graph_edge_lists_well_formed}
+		\HOLthm[def]{colouring.edge_list_well_formed_def}
 	\end{alltt}
 	
 	\item Graphs must not contain duplicate vertices:
 	
 	\begin{alltt}\small
-		\HOLthm{colouring.generated_graph_duplicate_free}
+		\HOLthm[def]{colouring.graph_duplicate_free_def}
 	\end{alltt}
 \end{itemize}
 \end{frame}
@@ -256,7 +304,7 @@ For verification to work, it was necessary to show that graphs passed satisfied 
 	\item Graphs must be symmetric -- if $v_1$ appears in the conflicts for $v_2$, $v_2$ appears in the conflicts for $v_1$:
 	
 	\begin{alltt}\small
-		\HOLthm{colouring.generated_graph_reflects_conflicts}
+		\HOLthm[def]{colouring.graph_reflects_conflicts_def}
 	\end{alltt}
 \end{itemize}
 
@@ -275,13 +323,13 @@ The first colouring algorithm verified was a naive one which simply assigns a ne
 	\HOLthm[def]{colouring.naive_colouring_def}
 \end{alltt}
 
-The statement of \texttt{naive_colouring_aux}'s correctness is given below:
+Correctness of \texttt{naive_colouring_aux}:
 
 \begin{alltt}\small
 	\HOLthm{colouring.naive_colouring_aux_satisfactory}
 \end{alltt}
 
-It was then shown that this implies the overall algorithm is correct:
+This implies the overall algorithm is correct:
 
 \begin{alltt}\small
 	\HOLthm{colouring.naive_colouring_aux_satisfactory_implication}
@@ -300,6 +348,105 @@ This was also proved correct with respect to \texttt{colouring\_satisfactory}:
 \begin{alltt}\small
 	\HOLthm{colouring.lowest_first_colouring_satisfactory}
 \end{alltt}
+\end{frame}
+
+\begin{frame}[containsverbatim]
+\frametitle{Heuristics}
+More efficient colourings can be achieved by considering vertices in a different order
+
+Heuristics re-order vertices based on some property -- modelled as a sorting step before passing the graph to the colouring algorithm
+
+A correct heuristic preserves the graph passed in. This means the resulting graph contains the same set of vertices and conflicts:
+
+\begin{alltt}\small
+	\HOLthm[def]{colouring.heuristic_application_ok_def}
+\end{alltt}
+
+Many heuristics are just sorts based on some property:
+
+\begin{itemize}
+	\item Highest degree first
+	\item Most uses first
+	\item Longest live range first
+\end{itemize}
+\end{frame}
+
+\begin{frame}[containsverbatim]
+\frametitle{Smallest last}
+\framesubtitle{A more complex heuristic}
+Remove the lowest-degree vertex from the graph, place it on a stack and repeat
+
+Once the graph is empty, pop vertices off the stack and colour each one with the lowest available colour
+
+\begin{alltt}\small
+	\HOLthm[def]{colouring.smallest_last_heuristic_aux_def}
+\end{alltt}
+
+\begin{alltt}\small
+	\HOLthm[def]{colouring.smallest_last_heuristic_def}
+\end{alltt}
+
+\begin{alltt}\small
+	\HOLthm{colouring.smallest_last_heuristic_ok}
+\end{alltt}
+\end{frame}
+
+\section{Summary and extensions}
+\subsection{Summary}
+\begin{frame}
+\frametitle{Summary of correctness proof}
+\begin{itemize}
+	\item LVA returns exactly the variables which affect subsequent program behaviour
+	\item Generated clash graphs contain exactly these conflicts and satisfy requirements for colouring algorithms
+	\item Colouring algorithms generate colourings which are satisfactory with respect to the original graphs
+	\item Colourings which are satisfactory on generated graphs are also fine with respect to the original definition of colouring correctness
+	\item Colourings satisfying that definition generate code with the same execution behaviour
+\end{itemize}
+\end{frame}
+
+\subsection{Extension work}
+\begin{frame}[containsverbatim]
+\frametitle{Extension work}
+\framesubtitle{Preference graphs}
+Preference graphs allow elimination of move instructions by placing source and destination in same register
+
+Code was extended to include move instructions, and a function was added to map registers to lists of preferences
+
+New colouring algorithm picks a preferred register where possible, and the lowest available otherwise
+
+Verification was very similar to verification of the lowest-first algorithm
+\end{frame}
+
+\begin{frame}[containsverbatim]
+\frametitle{Finite registers and spilling}
+No effect on colouring algorithms or proofs
+
+Registers are spilled after allocation if they are out of range, and load/store instructions are inserted where necessary
+
+This spill step was proven to preserve behaviour where memory is modelled as a second store
+
+A most-uses-first heuristic was implemented to ensure frequently-used registers are prioritised, and this was proved correct:
+
+\begin{alltt}\small
+	\HOLthm{colouring.most_used_last_heuristic_def}
+\end{alltt}
+
+(This puts frequently-used registers last because colouring algorithms work backwards from the end of the list)
+\end{frame}
+
+\subsection{Conclusion}
+\begin{frame}
+\frametitle{Conclusion}
+\begin{itemize}
+	\item Successful end-to-end verification of a register allocator
+	\item Proofs are designed in a modular way so new algorithms and heuristics can be substituted in easily
+	\item Future work:
+	\begin{itemize}
+		\item Improved code representation
+		\item Performance of algorithms
+		\item More thorough treatment of register spilling
+	\end{itemize}
+\end{itemize}
 \end{frame}
 
 
