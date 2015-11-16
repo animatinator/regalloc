@@ -1,4 +1,6 @@
-# Project overview
+# Developing a Formally Verified Algorithm for Static Register Allocation
+
+### Project overview
 
 Register allocation is one of the most important stages in an optimising compiler. Due to the significant speed difference between CPU registers and lower-level caches, a program which makes efficient use of registers and minimises memory accesses will be considerably faster than one which na\"{\i}vely stores variables in memory. The responsibility of register allocation is therefore to map program variables into physical registers whilst also minimising the number of values which have to be stored in memory. As with all optimisation steps, special care is needed to ensure register allocation does not accidentally alter program behaviour. Some values may be allocated the same register on the assumption that they will not be using it at the same time, and for the sake of correctness it is critical that this assumption is valid.
 
